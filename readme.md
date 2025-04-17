@@ -137,24 +137,10 @@ Optimizing 'gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif' with gifsicle 
 Successfully created 'gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif'
 ~~~
 
-With `--lossy --dither bayer` gifsicle compression instead of default `sierra2_4a`
+With `--lossy --dither bayer` gifsicle compression instead of default `sierra2_4a`. Reduced original MOV 67MB video to 3.1MB GIF.
 
 ~~~bash
 vid2gif_pro --src 'gemini-2.5-pro-atari-missile-command-v15-3.mov' --third-size --lossy --dither bayer --target 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif'
-
-Applying ~33% scaling (--third-size).
-Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=10)...
-[Parsed_palettegen_2 @ 0x6000001e4210] The input frame is not in sRGB, colors may be off
-    Last message repeated 332 times
-Pass 2: Generating GIF (using filters: scale=iw/3:ih/3,fps=10, palette options: dither=bayer:diff_mode=rectangle)...
-Optimizing 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif' with gifsicle (lossy default)...
-Successfully created 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif'
-~~~
-
-With `--lossy 70 --dither bayer` gifsicle compression instead of default `sierra2_4a`. Reduced original MOV 67MB video to 3.1MB GIF.
-
-~~~bash
-vid2gif_pro --src 'gemini-2.5-pro-atari-missile-command-v15-3.mov' --third-size --lossy --dither bayer --target 'gemini-2.5-pro-atari-missile-command-v15-3-lossy70-dither-bayer.gif'
 
 Applying ~33% scaling (--third-size).
 Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=10)...
