@@ -12,6 +12,10 @@ Optimizing 'cloudflare-security-rate-limit-analysis-170425-third-0.gif' with gif
 Successfully created 'cloudflare-security-rate-limit-analysis-170425-third-0.gif'
 ~~~
 
+`--third-size` output GIF
+
+![mov to GIFF third-size](examples/cloudflare-security-rate-limit-analysis-170425-third-0.gif)
+
 ~~~bash
 vid2gif_pro --src cloudflare-security-rate-limit-analysis-170425-0.mov --half-size --target cloudflare-security-rate-limit-analysis-170425-half-0.gif
 
