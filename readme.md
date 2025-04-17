@@ -125,43 +125,43 @@ fi
 This combined function offers the flexibility of `v2g` with the useful defaults and flags found in `v2gif`.
 
 ```bash
-declare -f vid2gif_pro
-
+declare -f vid2gif_pro                                             
 vid2gif_pro () {
     local src="" 
     local target="" 
     local resolution="" 
     local fps=10 
     local half_size=false 
+    local third_size=false 
     local optimize=true 
+    local dither_algo="sierra2_4a" 
     while [[ $# -gt 0 ]]
     do
         local key="$1" 
         case $key in
             (--src) src="$2" 
-                shift
-                shift ;;
+                shift 2 ;;
             (--target) target="$2" 
-                shift
-                shift ;;
+                shift 2 ;;
             (--resolution) resolution="$2" 
-                shift
-                shift ;;
+                shift 2 ;;
             (--fps) fps="$2" 
-                shift
-                shift ;;
+                shift 2 ;;
             (--half-size) half_size=true 
-                shift ;;
+                shift 1 ;;
+            (--third-size) third_size=true 
+                shift 1 ;;
             (--no-optimize) optimize=false 
-                shift ;;
+                shift 1 ;;
             (*) echo "Unknown option: $1"
+                echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--third-size] [--no-optimize]"
                 return 1 ;;
         esac
     done
     if [[ -z "$src" ]]
     then
         echo -e "\nError: Source file required. Use '--src <input video file>'.\n"
-        echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--no-optimize]"
+        echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--third-size] [--no-optimize]"
         return 1
     fi
     if [[ ! -f "$src" ]]
@@ -175,43 +175,81 @@ vid2gif_pro () {
         [[ "$basename" == "$src" ]] && basename="${src}_converted" 
         target="$basename.gif" 
     fi
-    local ffmpeg_flags="-y -v quiet" 
-    local fps_flag="-r $fps" 
-    local scale_filter="" 
-    if [[ "$half_size" == true ]]
+    local filters="" 
+    local scale_applied_msg="" 
+    if [[ "$third_size" == true ]]
     then
-        scale_filter="-vf scale=iw/2:ih/2" 
-        echo "Applying 50% scaling (--half-size)."
+        filters="scale=iw/3:ih/3" 
+        scale_applied_msg="Applying ~33% scaling (--third-size)." 
+    elif [[ "$half_size" == true ]]
+    then
+        filters="scale=iw/2:ih/2" 
+        scale_applied_msg="Applying 50% scaling (--half-size)." 
     elif [[ -n "$resolution" ]]
     then
         resolution="${resolution//x/:}" 
-        scale_filter="-vf scale=$resolution" 
-        echo "Applying custom resolution: $resolution (--resolution)."
-    else
-        echo "Using original resolution."
+        filters="scale=$resolution" 
+        scale_applied_msg="Applying custom resolution: $resolution (--resolution)." 
     fi
-    echo "Converting '$src' to '$target'..."
-    echo "Parameters: FPS=$fps, Optimize=$optimize"
-    if ! ffmpeg $ffmpeg_flags -i "$src" $scale_filter -pix_fmt rgb8 $fps_flag "$target"
+    if [[ -n "$filters" ]]
     then
-        echo "Error during FFMPEG conversion."
+        filters+=",fps=${fps}" 
+    else
+        filters="fps=${fps}" 
+        scale_applied_msg="Using original resolution (adjusting FPS to $fps)." 
+    fi
+    if [[ -n "$scale_applied_msg" ]]
+    then
+        echo "$scale_applied_msg"
+    fi
+    local palette_file
+    palette_file=$(mktemp "${TMPDIR:-/tmp}/vid2gif_palette_XXXXXXXXXX.png") 
+    trap 'rm -f "$palette_file"' EXIT INT TERM HUP
+    echo "Pass 1: Generating palette (using filters: $filters)..."
+    local palettegen_cmd_array=("ffmpeg" "-y" "-v" "warning" "-i" "$src" "-vf" "${filters},palettegen=stats_mode=diff" "-update" "1" "$palette_file") 
+    if ! "${palettegen_cmd_array[@]}"
+    then
+        echo "Error during palette generation. Check FFMPEG warnings above."
+        return 1
+    fi
+    if [[ ! -s "$palette_file" ]]
+    then
+        echo "Error: Palette file generation failed or created an empty file."
+        return 1
+    fi
+    echo "Pass 2: Generating GIF using palette (dither: $dither_algo)..."
+    local gifgen_cmd_array=("ffmpeg" "-y" "-v" "quiet" "-i" "$src" "-i" "$palette_file" "-filter_complex" "[0:v]${filters}[s]; [s][1:v]paletteuse=dither=${dither_algo}" "$target") 
+    if ! "${gifgen_cmd_array[@]}"
+    then
+        echo "Error during final GIF generation."
         return 1
     fi
     if [[ "$optimize" == true ]]
     then
-        echo "Optimizing '$target' with gifsicle..."
-        if ! gifsicle -O3 "$target" -o "$target"
+        if [[ ! -f "$target" ]]
         then
-            echo "Warning: gifsicle optimization failed, but GIF was created."
+            echo "Warning: Target file '$target' not found after ffmpeg step. Skipping optimization."
+        else
+            echo "Optimizing '$target' with gifsicle..."
+            if ! gifsicle -O3 "$target" -o "$target"
+            then
+                echo "Warning: gifsicle optimization failed, but GIF was created."
+            fi
         fi
     else
         echo "Skipping gifsicle optimization (--no-optimize)."
     fi
-    if command -v osascript &> /dev/null
+    if [[ -f "$target" ]] && command -v osascript &> /dev/null
     then
         osascript -e "display notification \"'$target' successfully converted and saved\" with title \"Video to GIF Complete\""
     fi
-    echo "Successfully created '$target'"
-    return 0
+    if [[ -f "$target" ]]
+    then
+        echo "Successfully created '$target'"
+        return 0
+    else
+        echo "Error: Conversion finished, but target file '$target' was not found."
+        return 1
+    fi
 }
 ```
