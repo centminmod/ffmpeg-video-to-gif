@@ -102,6 +102,9 @@ Successfully created 'cloudflare-security-rate-limit-analysis-170425-lossy-bayer
 ~~~
 
 
+FYI, online converters like https://convertio.co/mov-gif/ took my MOV and converted to 11.3MB GIF file!
+
+
 ~~~bash
 ls -lah cloudflare-security*        
 -rw-r--r--  1 username  staff   2.5M 17 Apr 15:25 cloudflare-security-rate-limit-analysis-170425-0.gif
