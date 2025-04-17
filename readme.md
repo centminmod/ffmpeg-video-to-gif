@@ -107,13 +107,13 @@ FYI, online converters like https://convertio.co/mov-gif/ took my MOV and conver
 
 ~~~bash
 ls -lah cloudflare-security*        
--rw-r--r--  1 username  staff   2.5M 17 Apr 15:25 cloudflare-security-rate-limit-analysis-170425-0.gif
--rw-r--r--@ 1 username  staff   5.0M 17 Apr 15:24 cloudflare-security-rate-limit-analysis-170425-0.mov
--rw-r--r--@ 1 username  staff   3.6M 17 Apr 15:15 cloudflare-security-rate-limit-analysis-170425-1.gif
--rw-r--r--@ 1 username  staff   7.6M 17 Apr 14:28 cloudflare-security-rate-limit-analysis-170425-1.mov
--rw-r--r--@ 1 username  staff   1.9M 17 Apr 15:36 cloudflare-security-rate-limit-analysis-170425-half-0.gif
--rw-r--r--  1 username  staff   1.3M 17 Apr 20:55 cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif
--rw-r--r--@ 1 username  staff   879K 17 Apr 15:56 cloudflare-security-rate-limit-analysis-170425-third-0.gif
+2.5M 17 Apr 15:25 cloudflare-security-rate-limit-analysis-170425-0.gif
+5.0M 17 Apr 15:24 cloudflare-security-rate-limit-analysis-170425-0.mov
+3.6M 17 Apr 15:15 cloudflare-security-rate-limit-analysis-170425-1.gif
+7.6M 17 Apr 14:28 cloudflare-security-rate-limit-analysis-170425-1.mov
+1.9M 17 Apr 15:36 cloudflare-security-rate-limit-analysis-170425-half-0.gif
+1.3M 17 Apr 20:55 cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif
+879K 17 Apr 15:56 cloudflare-security-rate-limit-analysis-170425-third-0.gif
 ~~~
 
 Another example
@@ -166,10 +166,10 @@ Successfully created 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-ba
 
 ~~~bash
 ls -lah 'gemini-2.5-pro-atari-missile-command-v15-3.mov' 'gemini-2.5-pro-atari-missile-command-v15-3.gif' 'gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif' 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif'
--rw-r--r--  1 username  staff   3.1M 17 Apr 20:42 gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif
--rw-r--r--  1 username  staff   6.5M 17 Apr 20:35 gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif
--rw-r--r--  1 username  staff   6.8M 17 Apr 20:18 gemini-2.5-pro-atari-missile-command-v15-3.gif
--rw-r--r--@ 1 username  staff    67M  8 Apr 07:50 gemini-2.5-pro-atari-missile-command-v15-3.mov
+3.1M 17 Apr 20:42 gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif
+6.5M 17 Apr 20:35 gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif
+6.8M 17 Apr 20:18 gemini-2.5-pro-atari-missile-command-v15-3.gif
+ 67M  8 Apr 07:50 gemini-2.5-pro-atari-missile-command-v15-3.mov
 ~~~
 
 A combined version `vid2gif_func.sh`
