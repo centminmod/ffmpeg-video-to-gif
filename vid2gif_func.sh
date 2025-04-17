@@ -1,6 +1,8 @@
 #!/bin/bash
 # File: (e.g., ~/.my_scripts/vid2gif_func.sh)
-# Contains the updated vid2gif_pro function using an array for ffmpeg args.
+# Contains the updated vid2gif_pro function using a two-pass
+# palettegen/paletteuse approach for better quality and size,
+# including the -update 1 fix for single palette image output.
 
 # --- Combined video to GIF conversion function ---
 # Inspired by:
@@ -16,6 +18,7 @@ vid2gif_pro() {
     local fps=10             # Frames per second (optional, default 10)
     local half_size=false    # Scale to 50% width/height (optional, overrides --resolution)
     local optimize=true      # Run gifsicle -O3 (optional, default true)
+    local dither_algo="sierra2_4a" # Dithering algorithm for paletteuse (optional, could add param later)
 
     # --- Parameter Parsing ---
     # More robust parsing using case statement
@@ -24,32 +27,33 @@ vid2gif_pro() {
         case $key in
             --src)
             src="$2"
-            shift # past argument
-            shift # past value
+            shift 2 # past argument and value
             ;;
             --target)
             target="$2"
-            shift # past argument
-            shift # past value
+            shift 2
             ;;
             --resolution)
             resolution="$2" # e.g., 640:480 or 640x480
-            shift # past argument
-            shift # past value
+            shift 2
             ;;
             --fps)
             fps="$2"
-            shift # past argument
-            shift # past value
+            shift 2
             ;;
             --half-size)
             half_size=true
-            shift # past argument (it's a flag, no value)
+            shift 1 # past argument (it's a flag, no value)
             ;;
             --no-optimize)
             optimize=false
-            shift # past argument
+            shift 1
             ;;
+            # Example for potentially adding dither choice later
+            # --dither)
+            # dither_algo="$2"
+            # shift 2
+            # ;;
             *)    # unknown option
             echo "Unknown option: $1"
             echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--no-optimize]"
@@ -72,66 +76,97 @@ vid2gif_pro() {
     # --- Determine Output Filename ---
     if [[ -z "$target" ]]; then
         local basename="${src%.*}"
-        # Handle cases where input might not have an extension
         [[ "$basename" == "$src" ]] && basename="${src}_converted"
         target="$basename.gif"
     fi
 
-    # --- Construct and Run Commands ---
-    echo "Converting '$src' to '$target'..."
-    echo "Parameters: FPS=$fps, Optimize=$optimize"
-
-    # Build the ffmpeg command in an array for robustness
-    local cmd_array=("ffmpeg")
-    cmd_array+=("-y")           # Overwrite output
-    cmd_array+=("-v" "quiet")   # Verbosity level quiet
-    cmd_array+=("-i" "$src")    # Input file
-
-    # Add scaling filter if specified
-    local scale_applied=false
+    # --- Prepare Filters ---
+    # Build filter string for ffmpeg's -vf or -filter_complex
+    local filters=""
+    local scale_applied_msg=""
     if [[ "$half_size" == true ]]; then
-        echo "Applying 50% scaling (--half-size)."
-        cmd_array+=("-vf" "scale=iw/2:ih/2")
-        scale_applied=true
+        filters="scale=iw/2:ih/2"
+        scale_applied_msg="Applying 50% scaling (--half-size)."
     elif [[ -n "$resolution" ]]; then
         resolution="${resolution//x/:}" # Ensure ':' separator
-        echo "Applying custom resolution: $resolution (--resolution)."
-        cmd_array+=("-vf" "scale=$resolution")
-        scale_applied=true
+        filters="scale=$resolution"
+        scale_applied_msg="Applying custom resolution: $resolution (--resolution)."
     fi
-    # Only print "Using original resolution" if no scaling was applied
-    if [[ "$scale_applied" == false ]]; then
-        echo "Using original resolution."
-        # No scaling arguments needed
+    # Add fps filter - needs comma separator if scale filter already exists
+    if [[ -n "$filters" ]]; then
+        filters+=",fps=${fps}"
+    else
+        filters="fps=${fps}"
+        # Set message here if only fps is applied (no scaling)
+        scale_applied_msg="Using original resolution (adjusting FPS to $fps)."
+    fi
+    # Print status only once
+    if [[ -n "$scale_applied_msg" ]]; then
+       echo "$scale_applied_msg"
     fi
 
-    # Add remaining options and output file
-    cmd_array+=("-pix_fmt" "rgb8")
-    cmd_array+=("-r" "$fps")
-    cmd_array+=("$target")
 
-    # --- Execute FFMPEG ---
-    echo "Executing FFMPEG command..."
-    # Optional: uncomment the next line to see the exact arguments array being passed
-    # printf "  Arg: '%s'\n" "${cmd_array[@]}"
+    # --- Temporary Palette File ---
+    # Using mktemp for safer temporary file handling
+    local palette_file
+    # Ensure TMPDIR is checked for macOS/Linux compatibility
+    palette_file=$(mktemp "${TMPDIR:-/tmp}/palette_${BASHPID}_XXXXXX.png")
+    # Ensure palette is cleaned up reliably on exit, interrupt, or termination
+    trap 'rm -f "$palette_file"' EXIT INT TERM HUP
 
-    if ! "${cmd_array[@]}"; then
-        echo "Error during FFMPEG conversion."
-        # Optional: You could attempt to remove a potentially partially created target file
-        # rm -f "$target"
+    # --- Pass 1: Generate Palette ---
+    echo "Pass 1: Generating palette (using filters: $filters)..."
+    local palettegen_cmd_array=(
+        "ffmpeg" "-y" "-v" "warning" # Less verbose for palettegen
+        "-i" "$src"
+        "-vf" "${filters},palettegen=stats_mode=diff" # Apply filters THEN generate palette
+        "-update" "1"                       # Ensure single image output for palette
+        "$palette_file"
+    )
+    # Optional: uncomment to debug palettegen command
+    # printf "Palette Command:" '%s ' "${palettegen_cmd_array[@]}"; echo
+
+    if ! "${palettegen_cmd_array[@]}"; then
+        echo "Error during palette generation. Check FFMPEG warnings above."
+        # trap will handle cleanup
+        return 1
+    fi
+    # Check if palette file was actually created and is not empty
+    if [[ ! -s "$palette_file" ]]; then
+       echo "Error: Palette file generation failed or created an empty file."
+       # trap will handle cleanup
+       return 1
+    fi
+
+    # --- Pass 2: Generate GIF using Palette ---
+    echo "Pass 2: Generating GIF using palette (dither: $dither_algo)..."
+    local gifgen_cmd_array=(
+        "ffmpeg" "-y" "-v" "quiet"     # Quiet for final output
+        "-i" "$src"                    # Input 0: video
+        "-i" "$palette_file"           # Input 1: palette
+        "-filter_complex" "[0:v]${filters}[s]; [s][1:v]paletteuse=dither=${dither_algo}" # Apply filters and use palette
+        # Note: No -pix_fmt or -r needed here; handled by filters/paletteuse
+        "$target"
+    )
+    # Optional: uncomment to debug gif generation command
+    # printf "GIF Command:" '%s ' "${gifgen_cmd_array[@]}"; echo
+
+    if ! "${gifgen_cmd_array[@]}"; then
+        echo "Error during final GIF generation."
+        # trap will handle cleanup
         return 1
     fi
 
+    # Palette file is automatically removed by trap EXIT INT TERM HUP
+
     # --- Execute Gifsicle Optimization (if enabled) ---
     if [[ "$optimize" == true ]]; then
-        # Check if the target file was actually created before optimizing
         if [[ ! -f "$target" ]]; then
              echo "Warning: Target file '$target' not found after ffmpeg step. Skipping optimization."
         else
             echo "Optimizing '$target' with gifsicle..."
             if ! gifsicle -O3 "$target" -o "$target"; then
                 echo "Warning: gifsicle optimization failed, but GIF was created."
-                # Decide if this should be a fatal error (return 1) or just a warning
             fi
          fi
     else
@@ -144,12 +179,11 @@ vid2gif_pro() {
         osascript -e "display notification \"'$target' successfully converted and saved\" with title \"Video to GIF Complete\""
     fi
 
-    # Final success message only if file exists
+    # --- Final Success Message ---
     if [[ -f "$target" ]]; then
         echo "Successfully created '$target'"
         return 0
     else
-        # This case might occur if ffmpeg succeeded according to exit code, but produced no file
         echo "Error: Conversion finished, but target file '$target' was not found."
         return 1
     fi
@@ -171,3 +205,4 @@ vid2gif_pro() {
 # 5. Run the function:
 #    vid2gif_pro --src <input_video> [options...]
 #    Example: vid2gif_pro --src my_video.mov --half-size --fps 15
+#    Example: vid2gif_pro --src screen_rec.mp4 --resolution 800:-1 # Keep aspect ratio
