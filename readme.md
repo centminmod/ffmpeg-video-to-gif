@@ -15,6 +15,10 @@ Successfully created 'cloudflare-security-rate-limit-analysis-170425-third-0.gif
 `--third-size` output GIF
 
 ~~~bash
+file cloudflare-security-rate-limit-analysis-170425-third-0.gif
+cloudflare-security-rate-limit-analysis-170425-third-0.gif: GIF image data, version 89a, 798 x 372
+~~~
+~~~bash
 exiftool cloudflare-security-rate-limit-analysis-170425-third-0.gif
 ExifTool Version Number         : 13.25
 File Name                       : cloudflare-security-rate-limit-analysis-170425-third-0.gif
