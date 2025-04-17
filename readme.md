@@ -14,6 +14,37 @@ Successfully created 'cloudflare-security-rate-limit-analysis-170425-third-0.gif
 
 `--third-size` output GIF
 
+~~~bash
+exiftool cloudflare-security-rate-limit-analysis-170425-third-0.gif
+ExifTool Version Number         : 13.25
+File Name                       : cloudflare-security-rate-limit-analysis-170425-third-0.gif
+Directory                       : .
+File Size                       : 900 kB
+File Modification Date/Time     : 2025:04:17 15:56:18+10:00
+File Access Date/Time           : 2025:04:17 16:04:54+10:00
+File Inode Change Date/Time     : 2025:04:17 15:59:47+10:00
+File Permissions                : -rw-r--r--
+File Type                       : GIF
+File Type Extension             : gif
+MIME Type                       : image/gif
+GIF Version                     : 89a
+Image Width                     : 798
+Image Height                    : 372
+Has Color Map                   : Yes
+Color Resolution Depth          : 8
+Bits Per Pixel                  : 8
+Background Color                : 6
+Animation Iterations            : Infinite
+XMP Toolkit                     : Image::ExifTool 12.60
+X Resolution                    : 72
+Y Resolution                    : 72
+Transparent Color               : 0
+Frame Count                     : 309
+Duration                        : 30.90 s
+Image Size                      : 798x372
+Megapixels                      : 0.297
+~~~
+
 ![mov to GIFF third-size](examples/cloudflare-security-rate-limit-analysis-170425-third-0.gif)
 
 ~~~bash
