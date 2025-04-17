@@ -1,6 +1,18 @@
 Video to GIF conversion for MacOS users inspired by https://gist.github.com/SheldonWangRJT/8d3f44a35c8d1386a396b9b49b43c385 discussion.
 
 ~~~bash
+vid2gif_pro --src cloudflare-security-rate-limit-analysis-170425-0.mov --third-size --target cloudflare-security-rate-limit-analysis-170425-third-0.gif
+
+Applying ~33% scaling (--third-size).
+Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=10)...
+[Parsed_palettegen_2 @ 0x6000032a5970] The input frame is not in sRGB, colors may be off
+    Last message repeated 308 times
+Pass 2: Generating GIF using palette (dither: sierra2_4a)...
+Optimizing 'cloudflare-security-rate-limit-analysis-170425-third-0.gif' with gifsicle...
+Successfully created 'cloudflare-security-rate-limit-analysis-170425-third-0.gif'
+~~~
+
+~~~bash
 vid2gif_pro --src cloudflare-security-rate-limit-analysis-170425-0.mov --half-size --target cloudflare-security-rate-limit-analysis-170425-half-0.gif
 
 Applying 50% scaling (--half-size).
@@ -43,6 +55,7 @@ ls -lah cloudflare-security*
 -rw-r--r--@ 1 username  staff   3.6M 17 Apr 15:15 cloudflare-security-rate-limit-analysis-170425-1.gif
 -rw-r--r--@ 1 username  staff   7.6M 17 Apr 14:28 cloudflare-security-rate-limit-analysis-170425-1.mov
 -rw-r--r--@ 1 username  staff   1.9M 17 Apr 15:36 cloudflare-security-rate-limit-analysis-170425-half-0.gif
+-rw-r--r--@ 1 username  staff   879K 17 Apr 15:56 cloudflare-security-rate-limit-analysis-170425-third-0.gif
 ~~~
 
 A combined version `vid2gif_func.sh`

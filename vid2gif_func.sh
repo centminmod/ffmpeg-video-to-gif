@@ -1,8 +1,8 @@
 #!/bin/bash
 # File: (e.g., ~/.my_scripts/vid2gif_func.sh)
 # Contains the updated vid2gif_pro function using a two-pass
-# palettegen/paletteuse approach for better quality and size,
-# including the -update 1 fix for single palette image output.
+# palettegen/paletteuse approach for better quality and size.
+# Includes --half-size, --third-size, and --resolution options.
 
 # --- Combined video to GIF conversion function ---
 # Inspired by:
@@ -16,9 +16,10 @@ vid2gif_pro() {
     local target=""          # Output GIF file (optional, defaults to source name .gif)
     local resolution=""      # Specific output resolution e.g., 640:480 (optional)
     local fps=10             # Frames per second (optional, default 10)
-    local half_size=false    # Scale to 50% width/height (optional, overrides --resolution)
+    local half_size=false    # Scale to 50% width/height (optional)
+    local third_size=false   # Scale to 33% width/height (optional, overrides half-size)
     local optimize=true      # Run gifsicle -O3 (optional, default true)
-    local dither_algo="sierra2_4a" # Dithering algorithm for paletteuse (optional, could add param later)
+    local dither_algo="sierra2_4a" # Dithering algorithm for paletteuse (optional)
 
     # --- Parameter Parsing ---
     # More robust parsing using case statement
@@ -27,14 +28,14 @@ vid2gif_pro() {
         case $key in
             --src)
             src="$2"
-            shift 2 # past argument and value
+            shift 2
             ;;
             --target)
             target="$2"
             shift 2
             ;;
             --resolution)
-            resolution="$2" # e.g., 640:480 or 640x480
+            resolution="$2"
             shift 2
             ;;
             --fps)
@@ -43,20 +44,19 @@ vid2gif_pro() {
             ;;
             --half-size)
             half_size=true
-            shift 1 # past argument (it's a flag, no value)
+            shift 1
+            ;;
+            --third-size)
+            third_size=true
+            shift 1
             ;;
             --no-optimize)
             optimize=false
             shift 1
             ;;
-            # Example for potentially adding dither choice later
-            # --dither)
-            # dither_algo="$2"
-            # shift 2
-            # ;;
-            *)    # unknown option
+            *) 
             echo "Unknown option: $1"
-            echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--no-optimize]"
+            echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--third-size] [--no-optimize]"
             return 1
             ;;
         esac
@@ -65,7 +65,8 @@ vid2gif_pro() {
     # --- Input Validation ---
     if [[ -z "$src" ]]; then
         echo -e "\nError: Source file required. Use '--src <input video file>'.\n"
-        echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--no-optimize]"
+        # <<< UPDATED USAGE MESSAGE
+        echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--third-size] [--no-optimize]"
         return 1
     fi
     if [[ ! -f "$src" ]]; then
@@ -82,12 +83,16 @@ vid2gif_pro() {
 
     # --- Prepare Filters ---
     # Build filter string for ffmpeg's -vf or -filter_complex
+    # Priority: --third-size > --half-size > --resolution > no scaling
     local filters=""
     local scale_applied_msg=""
-    if [[ "$half_size" == true ]]; then
+    if [[ "$third_size" == true ]]; then # <<< CHECK THIRD FIRST
+        filters="scale=iw/3:ih/3"
+        scale_applied_msg="Applying ~33% scaling (--third-size)."
+    elif [[ "$half_size" == true ]]; then # <<< CHECK HALF SECOND
         filters="scale=iw/2:ih/2"
         scale_applied_msg="Applying 50% scaling (--half-size)."
-    elif [[ -n "$resolution" ]]; then
+    elif [[ -n "$resolution" ]]; then # <<< CHECK RESOLUTION THIRD
         resolution="${resolution//x/:}" # Ensure ':' separator
         filters="scale=$resolution"
         scale_applied_msg="Applying custom resolution: $resolution (--resolution)."
@@ -107,57 +112,44 @@ vid2gif_pro() {
 
 
     # --- Temporary Palette File ---
-    # Using mktemp for safer temporary file handling
     local palette_file
-    # Ensure TMPDIR is checked for macOS/Linux compatibility
-    palette_file=$(mktemp "${TMPDIR:-/tmp}/palette_${BASHPID}_XXXXXX.png")
-    # Ensure palette is cleaned up reliably on exit, interrupt, or termination
+    # Use mktemp with a full path template ending in .png
+    palette_file=$(mktemp "${TMPDIR:-/tmp}/vid2gif_palette_XXXXXXXXXX.png")
     trap 'rm -f "$palette_file"' EXIT INT TERM HUP
 
     # --- Pass 1: Generate Palette ---
     echo "Pass 1: Generating palette (using filters: $filters)..."
     local palettegen_cmd_array=(
-        "ffmpeg" "-y" "-v" "warning" # Less verbose for palettegen
+        "ffmpeg" "-y" "-v" "warning"
         "-i" "$src"
-        "-vf" "${filters},palettegen=stats_mode=diff" # Apply filters THEN generate palette
-        "-update" "1"                       # Ensure single image output for palette
+        "-vf" "${filters},palettegen=stats_mode=diff"
+        "-update" "1"
         "$palette_file"
     )
-    # Optional: uncomment to debug palettegen command
-    # printf "Palette Command:" '%s ' "${palettegen_cmd_array[@]}"; echo
-
     if ! "${palettegen_cmd_array[@]}"; then
         echo "Error during palette generation. Check FFMPEG warnings above."
-        # trap will handle cleanup
         return 1
     fi
-    # Check if palette file was actually created and is not empty
     if [[ ! -s "$palette_file" ]]; then
        echo "Error: Palette file generation failed or created an empty file."
-       # trap will handle cleanup
        return 1
     fi
 
     # --- Pass 2: Generate GIF using Palette ---
     echo "Pass 2: Generating GIF using palette (dither: $dither_algo)..."
     local gifgen_cmd_array=(
-        "ffmpeg" "-y" "-v" "quiet"     # Quiet for final output
-        "-i" "$src"                    # Input 0: video
-        "-i" "$palette_file"           # Input 1: palette
-        "-filter_complex" "[0:v]${filters}[s]; [s][1:v]paletteuse=dither=${dither_algo}" # Apply filters and use palette
-        # Note: No -pix_fmt or -r needed here; handled by filters/paletteuse
+        "ffmpeg" "-y" "-v" "quiet"
+        "-i" "$src"
+        "-i" "$palette_file"
+        "-filter_complex" "[0:v]${filters}[s]; [s][1:v]paletteuse=dither=${dither_algo}"
         "$target"
     )
-    # Optional: uncomment to debug gif generation command
-    # printf "GIF Command:" '%s ' "${gifgen_cmd_array[@]}"; echo
-
     if ! "${gifgen_cmd_array[@]}"; then
         echo "Error during final GIF generation."
-        # trap will handle cleanup
         return 1
     fi
 
-    # Palette file is automatically removed by trap EXIT INT TERM HUP
+    # Palette file is automatically removed by trap
 
     # --- Execute Gifsicle Optimization (if enabled) ---
     if [[ "$optimize" == true ]]; then
@@ -174,7 +166,6 @@ vid2gif_pro() {
     fi
 
     # --- Notification (macOS specific) ---
-    # Check if target file exists before notifying success
     if [[ -f "$target" ]] && command -v osascript &> /dev/null; then
         osascript -e "display notification \"'$target' successfully converted and saved\" with title \"Video to GIF Complete\""
     fi
@@ -206,3 +197,4 @@ vid2gif_pro() {
 #    vid2gif_pro --src <input_video> [options...]
 #    Example: vid2gif_pro --src my_video.mov --half-size --fps 15
 #    Example: vid2gif_pro --src screen_rec.mp4 --resolution 800:-1 # Keep aspect ratio
+#    Example: vid2gif_pro --src another_video.mkv --third-size # <<< NEW EXAMPLE
