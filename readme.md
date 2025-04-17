@@ -97,6 +97,82 @@ ls -lah cloudflare-security*
 -rw-r--r--@ 1 username  staff   879K 17 Apr 15:56 cloudflare-security-rate-limit-analysis-170425-third-0.gif
 ~~~
 
+Another example
+
+~~~bash
+vid2gif_pro --src 'gemini-2.5-pro-atari-missile-command-v15-3.mov' --third-size --target 'gemini-2.5-pro-atari-missile-command-v15-3.gif'
+
+Applying ~33% scaling (--third-size).
+Attempting to create base temporary file...
+Base temporary file created: /var/folders/cv/b75n7x712sz61_y6pj62489r0000gn/T//vid2gif_palette_pTUR2G
+Attempting to rename base file to: /var/folders/cv/b75n7x712sz61_y6pj62489r0000gn/T//vid2gif_palette_pTUR2G.png
+Temporary palette file created successfully: /var/folders/cv/b75n7x712sz61_y6pj62489r0000gn/T//vid2gif_palette_pTUR2G.png
+Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=10)...
+[Parsed_palettegen_2 @ 0x6000010c8840] The input frame is not in sRGB, colors may be off
+    Last message repeated 332 times
+Palette generation successful.
+Pass 2: Generating GIF using palette (dither: sierra2_4a)...
+GIF generation successful.
+Optimizing 'gemini-2.5-pro-atari-missile-command-v15-3.gif' with gifsicle...
+Successfully created 'gemini-2.5-pro-atari-missile-command-v15-3.gif'
+~~~
+~~~bash
+ls -lah gemini-2.5-pro-atari-missile-command-v15-3.mov gemini-2.5-pro-atari-missile-command-v15-3.gif
+
+-rw-r--r--  1 username  staff   6.8M 17 Apr 20:18 gemini-2.5-pro-atari-missile-command-v15-3.gif
+-rw-r--r--@ 1 username  staff    67M  8 Apr 07:50 gemini-2.5-pro-atari-missile-command-v15-3.mov
+~~~
+
+With `--lossy` gifsicle compression
+
+~~~bash
+vid2gif_pro --src 'gemini-2.5-pro-atari-missile-command-v15-3.mov' --third-size --lossy --target 'gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif'
+
+Applying ~33% scaling (--third-size).
+Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=10)...
+[Parsed_palettegen_2 @ 0x600003844840] The input frame is not in sRGB, colors may be off
+    Last message repeated 332 times
+Pass 2: Generating GIF (using filters: scale=iw/3:ih/3,fps=10, palette options: dither=sierra2_4a:diff_mode=rectangle)...
+Optimizing 'gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif' with gifsicle (lossy default)...
+Successfully created 'gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif'
+~~~
+
+With `--lossy --dither bayer` gifsicle compression instead of default `sierra2_4a`
+
+~~~bash
+vid2gif_pro --src 'gemini-2.5-pro-atari-missile-command-v15-3.mov' --third-size --lossy --dither bayer --target 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif'
+
+Applying ~33% scaling (--third-size).
+Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=10)...
+[Parsed_palettegen_2 @ 0x6000001e4210] The input frame is not in sRGB, colors may be off
+    Last message repeated 332 times
+Pass 2: Generating GIF (using filters: scale=iw/3:ih/3,fps=10, palette options: dither=bayer:diff_mode=rectangle)...
+Optimizing 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif' with gifsicle (lossy default)...
+Successfully created 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif'
+~~~
+
+With `--lossy 70 --dither bayer` gifsicle compression instead of default `sierra2_4a`. Reduced original MOV 67MB video to 3.1MB GIF.
+
+~~~bash
+vid2gif_pro --src 'gemini-2.5-pro-atari-missile-command-v15-3.mov' --third-size --lossy --dither bayer --target 'gemini-2.5-pro-atari-missile-command-v15-3-lossy70-dither-bayer.gif'
+
+Applying ~33% scaling (--third-size).
+Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=10)...
+[Parsed_palettegen_2 @ 0x6000001e4210] The input frame is not in sRGB, colors may be off
+    Last message repeated 332 times
+Pass 2: Generating GIF (using filters: scale=iw/3:ih/3,fps=10, palette options: dither=bayer:diff_mode=rectangle)...
+Optimizing 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif' with gifsicle (lossy default)...
+Successfully created 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif'
+~~~
+
+~~~bash
+ls -lah 'gemini-2.5-pro-atari-missile-command-v15-3.mov' 'gemini-2.5-pro-atari-missile-command-v15-3.gif' 'gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif' 'gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif'
+-rw-r--r--  1 username  staff   3.1M 17 Apr 20:42 gemini-2.5-pro-atari-missile-command-v15-3-lossy-dither-bayer.gif
+-rw-r--r--  1 username  staff   6.5M 17 Apr 20:35 gemini-2.5-pro-atari-missile-command-v15-3-lossy.gif
+-rw-r--r--  1 username  staff   6.8M 17 Apr 20:18 gemini-2.5-pro-atari-missile-command-v15-3.gif
+-rw-r--r--@ 1 username  staff    67M  8 Apr 07:50 gemini-2.5-pro-atari-missile-command-v15-3.mov
+~~~
+
 A combined version `vid2gif_func.sh`
 
 `~/.bashrc` or `~/.zshrc`
