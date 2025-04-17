@@ -87,6 +87,21 @@ gifsicle: warning: huge GIF, conserving memory (processing may take a while)
 Successfully created 'cloudflare-security-rate-limit-analysis-170425-1.gif'
 ~~~
 
+With `--lossy --dither bayer` gifsicle compression instead of default `sierra2_4a`.
+
+~~~bash
+vid2gif_pro --src cloudflare-security-rate-limit-analysis-170425-1.mov --third-size --lossy --dither bayer --target cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif
+
+Applying ~33% scaling (--third-size).
+Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=10)...
+[Parsed_palettegen_2 @ 0x600001e793f0] The input frame is not in sRGB, colors may be off
+    Last message repeated 467 times
+Pass 2: Generating GIF (using filters: scale=iw/3:ih/3,fps=10, palette options: dither=bayer:diff_mode=rectangle)...
+Optimizing 'cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif' with gifsicle (lossy default)...
+Successfully created 'cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif'
+~~~
+
+
 ~~~bash
 ls -lah cloudflare-security*        
 -rw-r--r--  1 username  staff   2.5M 17 Apr 15:25 cloudflare-security-rate-limit-analysis-170425-0.gif
@@ -94,6 +109,7 @@ ls -lah cloudflare-security*
 -rw-r--r--@ 1 username  staff   3.6M 17 Apr 15:15 cloudflare-security-rate-limit-analysis-170425-1.gif
 -rw-r--r--@ 1 username  staff   7.6M 17 Apr 14:28 cloudflare-security-rate-limit-analysis-170425-1.mov
 -rw-r--r--@ 1 username  staff   1.9M 17 Apr 15:36 cloudflare-security-rate-limit-analysis-170425-half-0.gif
+-rw-r--r--  1 username  staff   1.3M 17 Apr 20:55 cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif
 -rw-r--r--@ 1 username  staff   879K 17 Apr 15:56 cloudflare-security-rate-limit-analysis-170425-third-0.gif
 ~~~
 
@@ -115,12 +131,6 @@ Pass 2: Generating GIF using palette (dither: sierra2_4a)...
 GIF generation successful.
 Optimizing 'gemini-2.5-pro-atari-missile-command-v15-3.gif' with gifsicle...
 Successfully created 'gemini-2.5-pro-atari-missile-command-v15-3.gif'
-~~~
-~~~bash
-ls -lah gemini-2.5-pro-atari-missile-command-v15-3.mov gemini-2.5-pro-atari-missile-command-v15-3.gif
-
--rw-r--r--  1 username  staff   6.8M 17 Apr 20:18 gemini-2.5-pro-atari-missile-command-v15-3.gif
--rw-r--r--@ 1 username  staff    67M  8 Apr 07:50 gemini-2.5-pro-atari-missile-command-v15-3.mov
 ~~~
 
 With `--lossy` gifsicle compression
