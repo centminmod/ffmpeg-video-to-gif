@@ -101,6 +101,20 @@ Optimizing 'cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif' wi
 Successfully created 'cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif'
 ~~~
 
+With `--lossy --dither bayer --fps 6` gifsicle compression instead of default `sierra2_4a`.  Reduced original MOV 5MB video to 663KB GIF.
+
+~~~bash
+vid2gif_pro --src cloudflare-security-rate-limit-analysis-170425-0.mov --third-size --lossy --dither bayer --fps 6 --target cloudflare-security-rate-limit-analysis-170425-lossy-bayer-fps6-0.gif
+
+Applying ~33% scaling (--third-size).
+Pass 1: Generating palette (using filters: scale=iw/3:ih/3,fps=6)...
+[Parsed_palettegen_2 @ 0x600000468790] The input frame is not in sRGB, colors may be off
+    Last message repeated 184 times
+Pass 2: Generating GIF (using filters: scale=iw/3:ih/3,fps=6, palette options: dither=bayer:diff_mode=rectangle)...
+Optimizing 'cloudflare-security-rate-limit-analysis-170425-lossy-bayer-fps6-0.gif' with gifsicle (lossy default)...
+Successfully created 'cloudflare-security-rate-limit-analysis-170425-lossy-bayer-fps6-0.gif'
+~~~
+
 
 FYI, online converters like https://convertio.co/mov-gif/ took my MOV and converted to 11.3MB GIF file!
 
@@ -113,6 +127,7 @@ ls -lah cloudflare-security*
 7.6M 17 Apr 14:28 cloudflare-security-rate-limit-analysis-170425-1.mov
 1.9M 17 Apr 15:36 cloudflare-security-rate-limit-analysis-170425-half-0.gif
 1.3M 17 Apr 20:55 cloudflare-security-rate-limit-analysis-170425-lossy-bayer-1.gif
+663K 18 Apr 15:33 cloudflare-security-rate-limit-analysis-170425-lossy-bayer-fps6-0.gif
 879K 17 Apr 15:56 cloudflare-security-rate-limit-analysis-170425-third-0.gif
 ~~~
 
