@@ -1,4 +1,145 @@
-Video to GIF conversion for MacOS users inspired by https://gist.github.com/SheldonWangRJT/8d3f44a35c8d1386a396b9b49b43c385 discussion.
+# Universal Video Converter Pro (`vid2gif_pro` / `vid2vid_pro`)
+
+A command-line Bash function for macOS users to convert videos to high-quality animated GIFs or efficiently encoded MP4 video formats (H.264, H.265/HEVC, AV1).
+
+Built upon `ffmpeg` and optionally `gifsicle` for optimization, this script provides fine-grained control over resolution, frame rate, cropping, quality, and output format and inspired by https://gist.github.com/SheldonWangRJT/8d3f44a35c8d1386a396b9b49b43c385 discussion.
+
+## Features
+
+* **Video to GIF:** Creates optimized animated GIFs using a two-pass `ffmpeg` process (`palettegen`/`paletteuse`) for better quality and smaller file sizes.
+* **Video to MP4:** Converts videos to MP4 format using modern codecs:
+    * H.264 (`libx264`) - Best compatibility.
+    * H.265/HEVC (`libx265`) - Better compression than H.264.
+    * AV1 (`libaom-av1`) - Excellent compression, but significantly slower encoding.
+* **Flexible Options:** Control resolution (scaling, specific dimensions), frame rate, cropping, quality (CRF for MP4, lossiness for GIF), dithering (GIF), and encoding presets (MP4).
+* **Optimization:** Uses `gifsicle` for further GIF optimization (optional). MP4 output includes `+faststart` flag for web streaming optimization.
+* **Convenience:** Automatically determines output filename if not specified. Provides macOS notifications on completion.
+* **Aliases:** Can be called as `vid2gif_pro` or `vid2vid_pro`.
+
+## Requirements
+
+* **macOS:** Tested on macOS. Uses `mktemp` and `osascript` for notifications.
+* **`ffmpeg`:** The core conversion tool. Must be installed and available in your `$PATH`.
+    * For AV1 support, `ffmpeg` must be compiled with `libaom-av1` enabled. Check with: `ffmpeg -codecs | grep libaom`
+* **`gifsicle`:** Required *only* for GIF optimization (`--optimize` flag, enabled by default for GIFs).
+
+You can typically install these dependencies using [Homebrew](https://brew.sh/):
+```bash
+brew install ffmpeg gifsicle
+```
+*(If AV1 support is missing in the default `ffmpeg` brew formula, you might need to investigate custom builds or alternative formulas)*
+
+## Installation
+
+1.  **Save the Script:** Save the code provided in the `vid2gif_func.sh` file (or similar) to a location like `~/.my_scripts/vid2gif_func.sh`.
+2.  **Make Executable (Optional but good practice):**
+    ```bash
+    chmod +x ~/.my_scripts/vid2gif_func.sh
+    ```
+3.  **Source the Script:** Add the following line to your shell configuration file (`~/.zshrc` for Zsh or `~/.bashrc` or `~/.bash_profile` for Bash) to make the function available in your terminal sessions:
+    ```bash
+    if [[ -f ~/.my_scripts/vid2gif_func.sh ]]; then
+      source ~/.my_scripts/vid2gif_func.sh
+    fi
+    ```
+4.  **Reload Shell:** Open a new terminal window or run `source ~/.zshrc` (or your respective config file).
+
+## Usage
+
+The function can be called using either `vid2gif_pro` or `vid2vid_pro`.
+
+```bash
+vid2gif_pro --src <input_video> [options]
+# or
+vid2vid_pro --src <input_video> [options]
+```
+
+**Required Argument:**
+
+* `--src <input_file>`: Path to the source video file.
+
+**Output Options:**
+
+* `--target <output_file>`: Specify the output filename. If omitted, defaults are generated based on the source name and conversion type (e.g., `source.gif`, `source-libx264.mp4`).
+* `--to-mp4-h264`: Convert to MP4 using H.264 (libx264) codec.
+* `--to-mp4-h265`: Convert to MP4 using H.265 (libx265) codec.
+* `--to-mp4-av1`: Convert to MP4 using AV1 (libaom-av1) codec (slow!).
+* *(Default Output)*: If no `--to-mp4-*` flag is given, the output defaults to GIF.
+
+**General Options:**
+
+* `--resolution <WxH>`: Set a specific output resolution (e.g., `640x480` or `640:480`).
+* `--half-size`: Scale output to 50% of original dimensions.
+* `--third-size`: Scale output to ~33% of original dimensions (overrides `--half-size` and `--resolution`).
+* `--crop <W:H:X:Y>`: Crop the video. W=width, H=height, X=offset-x, Y=offset-y.
+* `--fps <rate>`: Set frame rate.
+    * For GIF: Sets the output GIF FPS (default: 10).
+    * For MP4: Overrides the source video frame rate (use with caution).
+
+**GIF Specific Options:**
+
+* `--dither <algo>`: Dithering algorithm for `paletteuse` (default: `sierra2_4a`). Other options include `bayer`, `heckbert`, etc.
+* `--no-optimize`: Disable `gifsicle` optimization step.
+* `--lossy [level]`: Enable lossy GIF compression using `gifsicle`. Optionally provide a level (e.g., `--lossy 80`).
+
+**MP4 Specific Options:**
+
+* `--crf <value>`: Constant Rate Factor (quality setting). Lower values = better quality, larger file. (Default: 23). Recommended ranges vary by codec (e.g., 18-28 for x264, 20-30 for x265, 30-45 for AV1).
+* `--preset <name>`: Encoding speed preset (e.g., `ultrafast`, `fast`, `medium`, `slow`, `veryslow`). Affects speed vs. compression efficiency. (Default: `medium`). Less impact on `libaom-av1`.
+
+## Examples
+
+**1. Convert MOV to Optimized GIF (Default)**
+
+```bash
+# Basic conversion, 1/3 size, default 10 fps
+vid2gif_pro --src my_video.mov --third-size
+
+# Half size, 15 fps, custom target name
+vid2gif_pro --src screen_recording.mov --half-size --fps 15 --target preview.gif
+
+# Lossy GIF, bayer dither, 8 fps
+vid2gif_pro --src animation.mov --lossy 80 --dither bayer --fps 8 --target small_anim.gif
+```
+
+**2. Convert MOV to MP4 (H.264 - libx264)**
+
+```bash
+# Convert with default settings (CRF 23), auto filename like my_video-libx264.mp4
+vid2vid_pro --src my_video.mov --to-mp4-h264
+
+# Higher quality (CRF 20), faster preset, specific resolution
+vid2vid_pro --src lecture.mov --to-mp4-h264 --crf 20 --preset fast --resolution 1280x720
+```
+
+**3. Convert MOV to MP4 (H.265 - libx265)**
+
+```bash
+# Convert using CRF 26 for good compression, keep original frame rate
+vid2vid_pro --src vacation.mov --to-mp4-h265 --crf 26
+
+# Convert, force 30 fps, 1/3 size
+vid2vid_pro --src drone_footage.mov --to-mp4-h265 --third-size --fps 30 --crf 28
+```
+
+**4. Convert MOV to MP4 (AV1 - libaom-av1)** - *Expect long processing times*
+
+```bash
+# Convert using CRF 35, keep original frame rate
+vid2vid_pro --src conference_talk.mov --to-mp4-av1 --crf 35
+
+# Convert, 1/3 size, force 15 fps (will be very slow)
+vid2vid_pro --src long_clip.mov --to-mp4-av1 --third-size --fps 15 --crf 40
+```
+
+## Notes
+
+* **AV1 Performance:** Encoding with `libaom-av1` is CPU-intensive and significantly slower than H.264 or H.265.
+* **macOS Notifications:** If `osascript` is available, a system notification will appear upon successful conversion.
+* **Error Handling:** The script includes basic checks for input files and reports errors from `ffmpeg` or `gifsicle`.
+* **Temporary Files:** A temporary PNG file is created for the GIF palette generation in `/tmp` (or `$TMPDIR`) and is automatically cleaned up.
+
+## MOV To GIF
 
 ~~~bash
 vid2gif_pro --src cloudflare-security-rate-limit-analysis-170425-0.mov --third-size --target cloudflare-security-rate-limit-analysis-170425-third-0.gif
@@ -204,153 +345,93 @@ if [[ -f ~/".my_scripts/vid2gif_func.sh" ]]; then
 fi
 ~~~
 
-**Key changes and features of the combined `vid2gif_pro` function:**
+## MOV To MP4/AV1
 
-1.  **Robust Parameter Parsing:** Uses a `case` statement, which is generally better for handling flags (like `--half-size`, `--no-optimize`) and parameters with values.
-2.  **Clear Defaults:** Defaults are set at the beginning (`fps=10`, `optimize=true`).
-3.  **Required Source:** Explicitly checks if `--src` was provided and if the file exists.
-4.  **Flexible Output Naming:** Uses `--target` if provided, otherwise derives from `--src` filename.
-5.  **Combined Scaling Options:**
-    * You can use `--half-size` for the 50% scaling behaviour from `v2gif`.
-    * You can use `--resolution WxH` (or `W:H`) for specific dimensions like `v2g`.
-    * If neither is specified, it uses the original resolution.
-    * `--half-size` takes precedence over `--resolution` if both are accidentally provided.
-6.  **FPS Control:** Uses `--fps` like `v2g`, defaulting to 10.
-7.  **Includes `v2gif` Flags:** Adds `-y` (overwrite output) and `-v quiet` (less FFMPEG chatter) to the `ffmpeg` command by default.
-8.  **Optional Optimization:** Includes `gifsicle -O3` optimization by default but allows disabling it with `--no-optimize`.
-9.  **macOS Notifications:** Keeps the `osascript` notification from `v2g`.
-10. **Error Handling:** Basic checks for source file existence and reports FFMPEG errors. Added a warning if `gifsicle` fails.
-11. **Local Variables:** Uses `local` for variables inside the function to avoid polluting the global shell environment.
-12. **Clearer Output:** Prints messages about the parameters being used and the steps being taken.
 
-This combined function offers the flexibility of `v2g` with the useful defaults and flags found in `v2gif`.
+For MOV to MP4/AVI use alias command `vid2gif_pro`.
 
-```bash
-declare -f vid2gif_pro                                             
-vid2gif_pro () {
-    local src="" 
-    local target="" 
-    local resolution="" 
-    local fps=10 
-    local half_size=false 
-    local third_size=false 
-    local optimize=true 
-    local dither_algo="sierra2_4a" 
-    while [[ $# -gt 0 ]]
-    do
-        local key="$1" 
-        case $key in
-            (--src) src="$2" 
-                shift 2 ;;
-            (--target) target="$2" 
-                shift 2 ;;
-            (--resolution) resolution="$2" 
-                shift 2 ;;
-            (--fps) fps="$2" 
-                shift 2 ;;
-            (--half-size) half_size=true 
-                shift 1 ;;
-            (--third-size) third_size=true 
-                shift 1 ;;
-            (--no-optimize) optimize=false 
-                shift 1 ;;
-            (*) echo "Unknown option: $1"
-                echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--third-size] [--no-optimize]"
-                return 1 ;;
-        esac
-    done
-    if [[ -z "$src" ]]
-    then
-        echo -e "\nError: Source file required. Use '--src <input video file>'.\n"
-        echo "Usage: vid2gif_pro --src <input> [--target <output>] [--resolution <WxH>] [--fps <rate>] [--half-size] [--third-size] [--no-optimize]"
-        return 1
-    fi
-    if [[ ! -f "$src" ]]
-    then
-        echo -e "\nError: Source file not found: $src\n"
-        return 1
-    fi
-    if [[ -z "$target" ]]
-    then
-        local basename="${src%.*}" 
-        [[ "$basename" == "$src" ]] && basename="${src}_converted" 
-        target="$basename.gif" 
-    fi
-    local filters="" 
-    local scale_applied_msg="" 
-    if [[ "$third_size" == true ]]
-    then
-        filters="scale=iw/3:ih/3" 
-        scale_applied_msg="Applying ~33% scaling (--third-size)." 
-    elif [[ "$half_size" == true ]]
-    then
-        filters="scale=iw/2:ih/2" 
-        scale_applied_msg="Applying 50% scaling (--half-size)." 
-    elif [[ -n "$resolution" ]]
-    then
-        resolution="${resolution//x/:}" 
-        filters="scale=$resolution" 
-        scale_applied_msg="Applying custom resolution: $resolution (--resolution)." 
-    fi
-    if [[ -n "$filters" ]]
-    then
-        filters+=",fps=${fps}" 
-    else
-        filters="fps=${fps}" 
-        scale_applied_msg="Using original resolution (adjusting FPS to $fps)." 
-    fi
-    if [[ -n "$scale_applied_msg" ]]
-    then
-        echo "$scale_applied_msg"
-    fi
-    local palette_file
-    palette_file=$(mktemp "${TMPDIR:-/tmp}/vid2gif_palette_XXXXXXXXXX.png") 
-    trap 'rm -f "$palette_file"' EXIT INT TERM HUP
-    echo "Pass 1: Generating palette (using filters: $filters)..."
-    local palettegen_cmd_array=("ffmpeg" "-y" "-v" "warning" "-i" "$src" "-vf" "${filters},palettegen=stats_mode=diff" "-update" "1" "$palette_file") 
-    if ! "${palettegen_cmd_array[@]}"
-    then
-        echo "Error during palette generation. Check FFMPEG warnings above."
-        return 1
-    fi
-    if [[ ! -s "$palette_file" ]]
-    then
-        echo "Error: Palette file generation failed or created an empty file."
-        return 1
-    fi
-    echo "Pass 2: Generating GIF using palette (dither: $dither_algo)..."
-    local gifgen_cmd_array=("ffmpeg" "-y" "-v" "quiet" "-i" "$src" "-i" "$palette_file" "-filter_complex" "[0:v]${filters}[s]; [s][1:v]paletteuse=dither=${dither_algo}" "$target") 
-    if ! "${gifgen_cmd_array[@]}"
-    then
-        echo "Error during final GIF generation."
-        return 1
-    fi
-    if [[ "$optimize" == true ]]
-    then
-        if [[ ! -f "$target" ]]
-        then
-            echo "Warning: Target file '$target' not found after ffmpeg step. Skipping optimization."
-        else
-            echo "Optimizing '$target' with gifsicle..."
-            if ! gifsicle -O3 "$target" -o "$target"
-            then
-                echo "Warning: gifsicle optimization failed, but GIF was created."
-            fi
-        fi
-    else
-        echo "Skipping gifsicle optimization (--no-optimize)."
-    fi
-    if [[ -f "$target" ]] && command -v osascript &> /dev/null
-    then
-        osascript -e "display notification \"'$target' successfully converted and saved\" with title \"Video to GIF Complete\""
-    fi
-    if [[ -f "$target" ]]
-    then
-        echo "Successfully created '$target'"
-        return 0
-    else
-        echo "Error: Conversion finished, but target file '$target' was not found."
-        return 1
-    fi
-}
-```
+MOV to AV1
+
+~~~bash
+vid2gif_pro \
+  --src cloudflare-security-rate-limit-analysis-170425-0.mov \
+  --to-mp4-av1 \
+  --third-size \
+  --crf 35 \
+  --target cloudflare-security-rate-limit-analysis-170425-av1-crf35.mp4
+
+Applying ~33% scaling (--third-size).
+Converting to MP4 (libaom-av1)... This might take a while for AV1.
+[out#0/mp4 @ 0x600002e1c000] Codec AVOption b:a (set bitrate (in bits/s)) has not been used for any stream. The most likely reason is either wrong type (e.g. a video option with no video streams) or that it is a private option of some decoder which was not actually used for any stream.
+Successfully created 'cloudflare-security-rate-limit-analysis-170425-av1-crf35.mp4'
+~~~
+
+MOV to x264
+
+~~~bash
+vid2gif_pro \
+  --src cloudflare-security-rate-limit-analysis-170425-0.mov \
+  --to-mp4-h264 \
+  --third-size \
+  --crf 23 \
+  --target cloudflare-security-rate-limit-analysis-170425-x264-crf23.mp4
+
+Applying ~33% scaling (--third-size).
+Converting to MP4 (libx264)... This might take a while for AV1.
+[out#0/mp4 @ 0x600001c50000] Codec AVOption b:a (set bitrate (in bits/s)) has not been used for any stream. The most likely reason is either wrong type (e.g. a video option with no video streams) or that it is a private option of some decoder which was not actually used for any stream.
+Successfully created 'cloudflare-security-rate-limit-analysis-170425-x264-crf23.mp4'
+~~~
+
+MOV to x265
+
+~~~bash
+vid2gif_pro \
+  --src cloudflare-security-rate-limit-analysis-170425-0.mov \
+  --to-mp4-h265 \
+  --third-size \
+  --crf 23 \
+  --target cloudflare-security-rate-limit-analysis-170425-x265-crf23.mp4
+
+Applying ~33% scaling (--third-size).
+Converting to MP4 (libx265)... This might take a while for AV1.
+[out#0/mp4 @ 0x600001148000] Codec AVOption b:a (set bitrate (in bits/s)) has not been used for any stream. The most likely reason is either wrong type (e.g. a video option with no video streams) or that it is a private option of some decoder which was not actually used for any stream.
+x265 [info]: HEVC encoder version 4.1+1-1d117be
+x265 [info]: build info [Mac OS X][clang 16.0.0][64 bit] 8bit+10bit+12bit
+x265 [info]: using cpu capabilities: NEON Neon_DotProd Neon_I8MM
+x265 [info]: Main profile, Level-3.1 (Main tier)
+x265 [info]: Thread pool created using 14 threads
+x265 [info]: Slices                              : 1
+x265 [info]: frame threads / pool features       : 3 / wpp(6 rows)
+x265 [warning]: Source height < 720p; disabling lookahead-slices
+x265 [info]: Coding QT: max CU size, min CU size : 64 / 8
+x265 [info]: Residual QT: max TU size, max depth : 32 / 1 inter / 1 intra
+x265 [info]: ME / range / subpel / merge         : hex / 57 / 2 / 3
+x265 [info]: Keyframe min / max / scenecut / bias  : 25 / 250 / 40 / 5.00 
+x265 [info]: Lookahead / bframes / badapt        : 20 / 4 / 2
+x265 [info]: b-pyramid / weightp / weightb       : 1 / 1 / 0
+x265 [info]: References / ref-limit  cu / depth  : 3 / off / on
+x265 [info]: AQ: mode / str / qg-size / cu-tree  : 2 / 1.0 / 32 / 1
+x265 [info]: Rate Control / qCompress            : CRF-23.0 / 0.60
+x265 [info]: tools: rd=3 psy-rd=2.00 early-skip rskip mode=1 signhide tmvp
+x265 [info]: tools: b-intra strong-intra-smoothing deblock sao
+x265 [info]: frame I:      8, Avg QP:21.82  kb/s: 6079.44 
+x265 [info]: frame P:    520, Avg QP:29.98  kb/s: 107.83  
+x265 [info]: frame B:   1322, Avg QP:33.51  kb/s: 27.10   
+x265 [info]: Weighted P-Frames: Y:0.0% UV:0.0%
+
+encoded 1850 frames in 2.00s (926.65 fps), 75.96 kb/s, Avg QP:32.46
+Successfully created 'cloudflare-security-rate-limit-analysis-170425-x265-crf23.mp4'
+~~~
+
+* Original MOV = 5.0MB
+* AV1 converted and resized to 1/3 resolution = 127KB
+* x264 converted and resized to 1/3 resolution = 279KB
+* x265 converted and resized to 1/3 resolution = 318KB
+
+~~~bash
+ls -lah cloudflare-security* | egrep 'mov|mp4'
+5.0M 17 Apr 15:24 cloudflare-security-rate-limit-analysis-170425-0.mov
+127K 19 Apr 00:58 cloudflare-security-rate-limit-analysis-170425-av1-crf35.mp4
+279K 19 Apr 00:59 cloudflare-security-rate-limit-analysis-170425-x264-crf23.mp4
+318K 19 Apr 00:59 cloudflare-security-rate-limit-analysis-170425-x265-crf23.mp4
+~~~
