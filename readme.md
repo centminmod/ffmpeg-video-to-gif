@@ -14,10 +14,15 @@ Successfully created 'cloudflare-security-rate-limit-analysis-170425-third-0.gif
 
 `--third-size` output GIF
 
+`cloudflare-security-rate-limit-analysis-170425-third-0.gif` file info:
+
 ~~~bash
 file cloudflare-security-rate-limit-analysis-170425-third-0.gif
 cloudflare-security-rate-limit-analysis-170425-third-0.gif: GIF image data, version 89a, 798 x 372
 ~~~
+
+`cloudflare-security-rate-limit-analysis-170425-third-0.gif` exiftool info:
+
 ~~~bash
 exiftool cloudflare-security-rate-limit-analysis-170425-third-0.gif
 ExifTool Version Number         : 13.25
@@ -48,6 +53,8 @@ Duration                        : 30.90 s
 Image Size                      : 798x372
 Megapixels                      : 0.297
 ~~~
+
+`cloudflare-security-rate-limit-analysis-170425-third-0.gif`
 
 ![mov to GIFF third-size](examples/cloudflare-security-rate-limit-analysis-170425-third-0.gif)
 
@@ -116,7 +123,7 @@ Successfully created 'cloudflare-security-rate-limit-analysis-170425-lossy-bayer
 ~~~
 
 
-FYI, online converters like https://convertio.co/mov-gif/ took my MOV and converted to 11.3MB GIF file!
+FYI, online converters like https://convertio.co/mov-gif/ took my 5MB `cloudflare-security-rate-limit-analysis-170425-0.mov` MOV video file and converted to 11.3MB GIF file!
 
 
 ~~~bash
