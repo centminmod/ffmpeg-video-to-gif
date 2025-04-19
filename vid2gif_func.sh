@@ -1,9 +1,8 @@
 #!/bin/bash
 # File: (e.g., ~/.my_scripts/vid2gif_func.sh)
 # Enhanced function to convert video to GIF or MP4 (H.264/H.265/AV1).
-# Includes options for resolution, FPS, cropping, optimization, etc.
-# Retains original name vid2gif_pro, adds alias vid2vid_pro.
-# **Updated scaling logic to ensure even dimensions for codecs.**
+# Includes options for resolution, FPS, cropping, optimization, trimming, etc.
+# Restores detailed multi-line usage message format.
 
 # --- Enhanced video conversion function ---
 vid2gif_pro() {
@@ -19,6 +18,8 @@ vid2gif_pro() {
     local lossy_level=""     # Gifsicle lossiness level [N] (optional)
     local dither_algo="sierra2_4a" # Dithering algorithm for paletteuse (optional)
     local crop_coords=""     # Crop dimensions W:H:X:Y (optional)
+    local start_time=""      # Start time for trimming (ffmpeg -ss format)
+    local end_time=""        # End time for trimming (ffmpeg -to format)
     local output_format="gif" # Default output format
     local video_codec=""     # Codec for MP4 output (libx264, libx265, or libaom-av1)
     local crf=23             # Constant Rate Factor (default good for x264, adjust for others)
@@ -35,6 +36,8 @@ vid2gif_pro() {
             --half-size) half_size=true; shift 1 ;;
             --third-size) third_size=true; shift 1 ;;
             --crop) crop_coords="$2"; shift 2 ;; # Expect W:H:X:Y
+            --ss | --start-time) start_time="$2"; shift 2 ;;
+            --to | --end-time) end_time="$2"; shift 2 ;;
 
             # GIF specific options
             --no-optimize) optimize_gif=false; shift 1 ;;
@@ -50,11 +53,11 @@ vid2gif_pro() {
             # MP4 specific options
             --to-mp4-h264) output_format="mp4"; video_codec="libx264"; shift 1 ;;
             --to-mp4-h265) output_format="mp4"; video_codec="libx265"; shift 1 ;;
-            --to-mp4-av1) output_format="mp4"; video_codec="libaom-av1"; shift 1 ;; # Added AV1
+            --to-mp4-av1) output_format="mp4"; video_codec="libaom-av1"; shift 1 ;;
             --crf) crf="$2"; shift 2 ;;
             --preset) preset="$2"; shift 2 ;;
 
-            *)    # unknown option
+            *)    # unknown option - Restored detailed usage message
             echo "Unknown option: $1" >&2
             echo "Usage: vid2gif_pro --src <input> [--target <output>] [options]" >&2
             echo "  Conversion Type:" >&2
@@ -67,6 +70,8 @@ vid2gif_pro() {
             echo "    --half-size        Scale to 50%" >&2
             echo "    --third-size       Scale to ~33%" >&2
             echo "    --crop <W:H:X:Y>   Crop video" >&2
+            echo "    --ss <time>        Start time for trimming (e.g., 5 or 00:00:05)" >&2 # Added ss description
+            echo "    --to <time>        End time for trimming (e.g., 15 or 00:00:15)" >&2 # Added to description
             echo "  GIF Specific:" >&2
             echo "    --fps <rate>       Set GIF frame rate (default: $default_gif_fps)" >&2
             echo "    --no-optimize      Disable gifsicle optimization" >&2
@@ -102,39 +107,37 @@ vid2gif_pro() {
         [[ "$basename" == "$src" ]] && basename="${src}_converted"
         local codec_suffix=""
         if [[ "$output_format" == "mp4" ]]; then
-            codec_suffix="-${video_codec}" # e.g., -libx264, -libaom-av1
+            codec_suffix="-${video_codec}"
         fi
-        target="$basename${codec_suffix}.${output_format}" # e.g., video-libx264.mp4 or video.gif
+        local time_suffix=""
+        if [[ -n "$start_time" ]]; then time_suffix+="_from${start_time//:/}"; fi
+        if [[ -n "$end_time" ]]; then time_suffix+="_to${end_time//:/}"; fi
+        target="$basename${codec_suffix}${time_suffix}.${output_format}"
     fi
 
     # --- Prepare Filters ---
     local filters=""
     local filter_list=()
-    local scale_filter="" # Store scale filter separately
+    local scale_filter=""
     local scale_applied_msg=""
 
-    # 1. Scaling (Ensure dimensions are divisible by 2 for video codecs)
+    # 1. Scaling
     if [[ "$third_size" == true ]]; then
-        # Scale width to 1/3, calculate height preserving aspect ratio, ensure height is even
         scale_filter="scale=iw/3:-2"
         scale_applied_msg="Applying ~33% scaling (--third-size, ensuring even dimensions)."
     elif [[ "$half_size" == true ]]; then
-        # Scale width to 1/2, calculate height preserving aspect ratio, ensure height is even
         scale_filter="scale=iw/2:-2"
         scale_applied_msg="Applying 50% scaling (--half-size, ensuring even dimensions)."
     elif [[ -n "$resolution" ]]; then
-        # Use specified resolution, ensure dimensions are even friendly
         local width_res=$(echo "$resolution" | cut -d':' -f1 | cut -d'x' -f1)
         local height_res=$(echo "$resolution" | cut -d':' -f2 | cut -d'x' -f2)
         if [[ "$width_res" =~ ^[0-9]+$ ]] && [[ "$height_res" =~ ^[0-9]+$ ]]; then
-            # If both W and H provided, force width, calculate height to be even
              scale_filter="scale=${width_res}:-2"
              scale_applied_msg="Applying custom resolution (W=${width_res}, H=auto-even) (--resolution)."
-             # If H matters more: scale_filter="scale=-2:${height_res}"
-        elif [[ "$width_res" =~ ^[0-9]+$ ]]; then # Only W provided (e.g., 640x?)
+        elif [[ "$width_res" =~ ^[0-9]+$ ]]; then
              scale_filter="scale=${width_res}:-2"
              scale_applied_msg="Applying custom resolution (W=${width_res}, H=auto-even) (--resolution)."
-        elif [[ "$height_res" =~ ^[0-9]+$ ]]; then # Only H provided (e.g., ?x480)
+        elif [[ "$height_res" =~ ^[0-9]+$ ]]; then
              scale_filter="scale=-2:${height_res}"
              scale_applied_msg="Applying custom resolution (W=auto-even, H=${height_res}) (--resolution)."
         else
@@ -145,49 +148,61 @@ vid2gif_pro() {
          filter_list+=("$scale_filter")
     fi
 
-
-    # 2. Crop (if specified) - Applied *before* scaling typically makes sense
+    # 2. Crop
     if [[ -n "$crop_coords" ]]; then
         echo "Applying crop: $crop_coords"
-        # Insert crop filter at the beginning of the list
         filter_list=("crop=${crop_coords}" "${filter_list[@]}")
     fi
 
-    # 3. FPS (Handled differently for GIF vs MP4)
-    local effective_fps=$fps # User specified FPS
+    # 3. FPS
+    local effective_fps=$fps
     if [[ "$output_format" == "gif" ]]; then
         if [[ -z "$effective_fps" ]]; then
             effective_fps=$default_gif_fps
         fi
-        # Add fps filter *after* scaling/cropping for GIF
         filter_list+=("fps=${effective_fps}")
         if [[ -z "$scale_applied_msg" && -z "$crop_coords" ]]; then
              scale_applied_msg="Using original resolution (adjusting FPS to $effective_fps)."
         elif [[ -z "$scale_applied_msg" ]]; then
-             scale_applied_msg="(adjusting FPS to $effective_fps)." # Append FPS info if other filters applied
+             scale_applied_msg+=", adjusting FPS to $effective_fps." # Append if only crop applied
+        else
+             scale_applied_msg+=" & FPS to $effective_fps." # Append if scale/crop applied
         fi
     elif [[ -n "$effective_fps" ]]; then
-         # FPS for MP4 will be handled by the -r flag, not filtergraph unless needed for complex chains
          if [[ -z "$scale_applied_msg" && -z "$crop_coords" ]]; then
              scale_applied_msg="Using original resolution (adjusting FPS to $effective_fps)."
          elif [[ -z "$scale_applied_msg" ]]; then
-              scale_applied_msg="(adjusting FPS to $effective_fps)."
+              scale_applied_msg+=", adjusting FPS to $effective_fps." # Append if only crop applied
+         else
+             scale_applied_msg+=" & FPS to $effective_fps." # Append if scale/crop applied
          fi
     elif [[ -z "$scale_applied_msg" && -z "$crop_coords" ]]; then
-         # No scaling, no cropping, no FPS change mentioned
          scale_applied_msg="Using original resolution and frame rate."
     fi
 
-
     if [[ -n "$scale_applied_msg" ]]; then
-        # Display the final scaling/FPS message
         echo "$scale_applied_msg"
     fi
 
-    # Join filters with comma
     local IFS=,
     filters="${filter_list[*]}"
     unset IFS
+
+    # --- Build Base ffmpeg command arguments ---
+    local base_ffmpeg_cmd=("ffmpeg" "-y" "-v" "warning")
+    base_ffmpeg_cmd+=("-i" "$src")
+
+    # Add trimming options AFTER input
+    local time_trim_opts=()
+    if [[ -n "$start_time" ]]; then
+        time_trim_opts+=("-ss" "$start_time")
+        echo "Trimming from: $start_time"
+    fi
+    if [[ -n "$end_time" ]]; then
+        time_trim_opts+=("-to" "$end_time")
+        echo "Trimming to: $end_time"
+    fi
+
 
     # --- Execute Conversion ---
     local exit_code=0
@@ -210,9 +225,7 @@ vid2gif_pro() {
         trap 'rm -f "$palette_file"' EXIT INT TERM HUP
 
         echo "Pass 1: Generating palette (using filters: $filters)..."
-        # Build command array for palette generation
-        local palettegen_cmd_array=("ffmpeg" "-y" "-v" "warning" "-i" "$src")
-        # Append filters only if $filters is not empty
+        local palettegen_cmd_array=("${base_ffmpeg_cmd[@]}" "${time_trim_opts[@]}") # Add trimming here
         if [[ -n "$filters" ]]; then
             palettegen_cmd_array+=("-vf" "${filters},palettegen=stats_mode=diff")
         else
@@ -220,7 +233,6 @@ vid2gif_pro() {
         fi
         palettegen_cmd_array+=("-update" "1" "$palette_file")
 
-        # Execute palette generation
         if ! "${palettegen_cmd_array[@]}"; then
             echo "Error during palette generation." >&2
             exit_code=1
@@ -228,32 +240,23 @@ vid2gif_pro() {
            echo "Error: Palette file generation failed or created an empty file." >&2
            exit_code=1
         else
-            # --- Pass 2: Generate GIF ---
             local paletteuse_options="dither=${dither_algo}:diff_mode=rectangle"
             echo "Pass 2: Generating GIF (using filters: $filters, palette options: $paletteuse_options)..."
-            # Build command array for GIF generation
-            local gifgen_cmd_array=("ffmpeg" "-y" "-v" "quiet" "-i" "$src" "-i" "$palette_file")
-            # Construct filter_complex argument carefully
+            # Need to re-declare the base ffmpeg command for pass 2, simpler this way
+            local gifgen_cmd_array=("ffmpeg" "-y" "-v" "quiet" "-i" "$src" "${time_trim_opts[@]}" "-i" "$palette_file")
             local filter_complex_str=""
             if [[ -n "$filters" ]]; then
-                # Apply filters first, then use palette
                 filter_complex_str="[0:v]${filters}[s]; [s][1:v]paletteuse=${paletteuse_options}"
             else
-                # No pre-filters, just use palette
-                filter_complex_str="[0:v]paletteuse=${paletteuse_options}[out]" # Need output label if no filter chain
-                 # If just using paletteuse directly, no explicit [out] might be needed, ffmpeg often infers.
-                 # Let's simplify assuming ffmpeg handles it if no pre-filter:
                  filter_complex_str="[0:v][1:v]paletteuse=${paletteuse_options}"
             fi
             gifgen_cmd_array+=("-filter_complex" "$filter_complex_str")
             gifgen_cmd_array+=("$target")
 
-            # Execute GIF generation
             if ! "${gifgen_cmd_array[@]}"; then
                 echo "Error during final GIF generation." >&2
                 exit_code=1
             else
-                 # --- Gifsicle Optimization ---
                  if [[ "$optimize_gif" == true ]]; then
                      if [[ ! -f "$target" ]]; then
                           echo "Warning: Target file '$target' not found after ffmpeg step. Skipping optimization." >&2
@@ -280,8 +283,8 @@ vid2gif_pro() {
                  fi
             fi
         fi
-        rm -f "$palette_file" # Clean up palette file
-        trap - EXIT INT TERM HUP # Disable trap
+        rm -f "$palette_file"
+        trap - EXIT INT TERM HUP
 
     elif [[ "$output_format" == "mp4" ]]; then
         # --- MP4 Conversion (Single Pass) ---
@@ -289,34 +292,28 @@ vid2gif_pro() {
         if [[ "$video_codec" == "libaom-av1" ]]; then conv_msg+=" This might take a while."; fi
         echo "$conv_msg"
 
-        local mp4_cmd_array=( "ffmpeg" "-y" "-v" "warning" "-i" "$src" )
+        local mp4_cmd_array=("${base_ffmpeg_cmd[@]}" "${time_trim_opts[@]}")
 
-        # Add video filters if any were defined
         if [[ -n "$filters" ]]; then
-            mp4_cmd_array+=( "-vf" "$filters" )
+            mp4_cmd_array+=("-vf" "$filters")
         fi
 
-        # Add video codec options
-        mp4_cmd_array+=( "-c:v" "$video_codec" )
+        mp4_cmd_array+=("-c:v" "$video_codec")
         if [[ "$video_codec" == "libaom-av1" ]]; then
-             mp4_cmd_array+=( "-crf" "$crf" )
-             mp4_cmd_array+=( "-b:v" "0" ) # Needed for CRF mode in libaom-av1
-             mp4_cmd_array+=( "-strict" "experimental" ) # May be needed depending on ffmpeg version
-        else # libx264, libx265
-             mp4_cmd_array+=( "-preset" "$preset" )
-             mp4_cmd_array+=( "-crf" "$crf" )
+             mp4_cmd_array+=("-crf" "$crf")
+             mp4_cmd_array+=("-b:v" "0")
+             mp4_cmd_array+=("-strict" "experimental")
+        else
+             mp4_cmd_array+=("-preset" "$preset")
+             mp4_cmd_array+=("-crf" "$crf")
         fi
 
-        # Add audio options (or disable audio if source lacks it)
-        # Probing audio stream using ffprobe for better reliability
         local has_audio=false
         if command -v ffprobe &> /dev/null; then
-            # Check if ffprobe finds any audio stream
             if ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 "$src" &> /dev/null; then
                 has_audio=true
             fi
         else
-             # Fallback: Use ffmpeg check if ffprobe not found (less reliable)
              if ffmpeg -i "$src" -vn -c:a copy -f null - -v error &> /dev/null; then
                   has_audio=true
              fi
@@ -324,27 +321,26 @@ vid2gif_pro() {
         fi
 
         if [[ "$has_audio" == true ]]; then
-             mp4_cmd_array+=( "-c:a" "aac" ) # Set audio codec (AAC is common for MP4)
-             mp4_cmd_array+=( "-b:a" "128k" ) # Set audio bitrate (adjust as needed)
+             mp4_cmd_array+=("-c:a" "aac")
+             mp4_cmd_array+=("-b:a" "128k")
         else
-             mp4_cmd_array+=( "-an" ) # Explicitly disable audio
-             echo "Info: No audio stream detected in source. Disabling audio output (-an)."
+             mp4_cmd_array+=("-an")
+             if [[ -n "$start_time" || -n "$end_time" || -n "$filters" ]]; then
+                echo "Info: No audio stream detected in source. Disabling audio output (-an)."
+             fi
         fi
 
-        mp4_cmd_array+=( "-movflags" "+faststart" ) # Optimize for web streaming
+        mp4_cmd_array+=("-movflags" "+faststart")
 
-        # Override FPS if specified by user for MP4
         if [[ -n "$effective_fps" ]]; then
-             mp4_cmd_array+=( "-r" "$effective_fps" )
+             mp4_cmd_array+=("-r" "$effective_fps")
              echo "Overriding output frame rate to $effective_fps fps."
         fi
 
-        mp4_cmd_array+=( "$target" ) # Output file
+        mp4_cmd_array+=("$target")
 
-        # For debugging uncomment the next line:
         # echo "Executing: ${mp4_cmd_array[@]}"
 
-        # Execute command
         if ! "${mp4_cmd_array[@]}"; then
              echo "Error during MP4 conversion." >&2
              exit_code=1
@@ -360,7 +356,10 @@ vid2gif_pro() {
         if command -v osascript &> /dev/null; then
              local notification_title="Conversion Complete"
              if [[ "$output_format" == "gif" ]]; then notification_title="GIF Creation Complete"; fi
-            osascript -e "display notification \"'$target' successfully converted and saved\" with title \"$notification_title\""
+             local notify_msg="'$target' successfully converted"
+             if [[ -n "$start_time" || -n "$end_time" ]]; then notify_msg+=" (trimmed)"; fi
+             notify_msg+=" and saved"
+            osascript -e "display notification \"${notify_msg}\" with title \"$notification_title\""
         fi
         return 0
     else
@@ -374,6 +373,7 @@ vid2gif_pro() {
 alias vid2vid_pro='vid2gif_pro'
 
 # --- How to Use ---
+# (Instructions remain the same, but should now include --ss and --to)
 # 1. Save this code to a file, e.g., ~/.my_scripts/vid2gif_func.sh
 # 2. Make it executable: chmod +x ~/.my_scripts/vid2gif_func.sh
 # 3. Source it in your ~/.bashrc or ~/.zshrc:
@@ -389,8 +389,11 @@ alias vid2vid_pro='vid2gif_pro'
 # Convert MOV to GIF (default) using original name
 # vid2gif_pro --src input.mov
 #
-# Convert MOV to MP4 H.265 using alias
-# vid2vid_pro --src input.mov --to-mp4-h265 --crf 26
+# Convert MOV to MP4 H.265 using alias, trim from 5s to 15s
+# vid2vid_pro --src input.mov --to-mp4-h265 --crf 26 --ss 5 --to 15
 #
-# Convert MOV to MP4 AV1, third size (expect long processing time)
-# vid2gif_pro --src input.mov --to-mp4-av1 --third-size --crf 35
+# Convert MOV to GIF, trim first 10 seconds, third size
+# vid2gif_pro --src input.mov --third-size --to 10 --target first_10s.gif
+#
+# Convert MOV to MP4 AV1, trim from 30s onwards, half size
+# vid2gif_pro --src input.mov --to-mp4-av1 --half-size --crf 35 --ss 30

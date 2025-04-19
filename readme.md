@@ -132,6 +132,16 @@ vid2vid_pro --src conference_talk.mov --to-mp4-av1 --crf 35
 vid2vid_pro --src long_clip.mov --to-mp4-av1 --third-size --fps 15 --crf 40
 ```
 
+**5. Convert Specific Time Segments**
+
+```bash
+# Create a GIF from second 5 to second 12 of input.mov
+vid2gif_pro --src input.mov --ss 5 --to 12 --target segment.gif
+
+# Create an H.264 MP4 starting from 1 minute
+vid2gif_pro --src input.mov --to-mp4-h264 --ss 00:01:00
+```
+
 ## Notes
 
 * **AV1 Performance:** Encoding with `libaom-av1` is CPU-intensive and significantly slower than H.264 or H.265.
