@@ -72,6 +72,8 @@ vid2vid_pro --src <input_video> [options]
 * `--half-size`: Scale output to 50% of original dimensions.
 * `--third-size`: Scale output to ~33% of original dimensions (overrides `--half-size` and `--resolution`).
 * `--crop <W:H:X:Y>`: Crop the video. W=width, H=height, X=offset-x, Y=offset-y.
+* `--ss <time>` or `--start-time <time>`: Start time for trimming (e.g., `5` or `00:00:05`).
+* `--to <time>` or `--end-time <time>`: End time for trimming (e.g., `15` or `00:00:15`).
 * `--fps <rate>`: Set frame rate.
     * For GIF: Sets the output GIF FPS (default: 10).
     * For MP4: Overrides the source video frame rate (use with caution).
