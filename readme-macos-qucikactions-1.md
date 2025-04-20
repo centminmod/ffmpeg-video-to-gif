@@ -51,25 +51,25 @@ We'll create separate scripts in `/usr/local/bin` for each conversion type. Thes
     sudo nano /usr/local/bin/vid2convert_wrapper_gif_third_size.sh
     ```
 2.  Paste the following content:
-    ```bash
-    #!/bin/zsh
-    # Wrapper script for GIF (1/3 size, lossy) conversion via vid2gif_pro
+```bash
+#!/bin/zsh
+# Wrapper script for GIF (1/3 size, lossy) conversion via vid2gif_pro
 
-    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    source "$HOME/.my_scripts/vid2gif_func.sh"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+source "$HOME/.my_scripts/vid2gif_func.sh"
 
-    for f in "$@"
-    do
-      dir=$(dirname "$f")
-      filename_with_ext=$(basename "$f")
-      base="${filename_with_ext%.*}"
-      target_filename="${base}-third_size_lossy.gif" # Updated name
-      target_path="${dir}/${target_filename}"
+for f in "$@"
+do
+  dir=$(dirname "$f")
+  filename_with_ext=$(basename "$f")
+  base="${filename_with_ext%.*}"
+  target_filename="${base}-third_size_lossy.gif" # Updated name
+  target_path="${dir}/${target_filename}"
 
-      # Execute conversion with specific GIF options
-      vid2gif_pro --src "$f" --third-size --lossy --dither bayer --fps 6 --target "$target_path"
-    done
-    ```
+  # Execute conversion with specific GIF options
+  vid2gif_pro --src "$f" --third-size --lossy --dither bayer --fps 6 --target "$target_path"
+done
+```
 3.  Save and exit `nano` (`Ctrl+X`, `Y`, `Enter`).
 4.  Make it executable:
     ```bash
@@ -83,24 +83,24 @@ We'll create separate scripts in `/usr/local/bin` for each conversion type. Thes
     sudo nano /usr/local/bin/vid2convert_wrapper_x264.sh
     ```
 2.  Paste the following content:
-    ```bash
-    #!/bin/zsh
-    # Wrapper script for H.264 (CRF 29) conversion via vid2gif_pro
+```bash
+#!/bin/zsh
+# Wrapper script for H.264 (CRF 29) conversion via vid2gif_pro
+crf=29
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+source "$HOME/.my_scripts/vid2gif_func.sh"
 
-    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    source "$HOME/.my_scripts/vid2gif_func.sh"
+for f in "$@"
+do
+  dir=$(dirname "$f")
+  filename_with_ext=$(basename "$f")
+  base="${filename_with_ext%.*}"
+  target_filename="${base}-h264_crf${crf}.mp4"
+  target_path="${dir}/${target_filename}"
 
-    for f in "$@"
-    do
-      dir=$(dirname "$f")
-      filename_with_ext=$(basename "$f")
-      base="${filename_with_ext%.*}"
-      target_filename="${base}-h264_crf29.mp4"
-      target_path="${dir}/${target_filename}"
-
-      vid2gif_pro --src "$f" --to-mp4-h264 --crf 29 --target "$target_path"
-    done
-    ```
+  vid2gif_pro --src "$f" --to-mp4-h264 --crf ${crf} --target "$target_path"
+done
+```
 3.  Save and exit `nano`.
 4.  Make it executable:
     ```bash
@@ -114,24 +114,24 @@ We'll create separate scripts in `/usr/local/bin` for each conversion type. Thes
     sudo nano /usr/local/bin/vid2convert_wrapper_x265.sh
     ```
 2.  Paste the following content:
-    ```bash
-    #!/bin/zsh
-    # Wrapper script for H.265 (CRF 31) conversion via vid2gif_pro
+```bash
+#!/bin/zsh
+# Wrapper script for H.265 (CRF 31) conversion via vid2gif_pro
+crf=31
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+source "$HOME/.my_scripts/vid2gif_func.sh"
 
-    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    source "$HOME/.my_scripts/vid2gif_func.sh"
+for f in "$@"
+do
+  dir=$(dirname "$f")
+  filename_with_ext=$(basename "$f")
+  base="${filename_with_ext%.*}"
+  target_filename="${base}-h265_crf${crf}.mp4"
+  target_path="${dir}/${target_filename}"
 
-    for f in "$@"
-    do
-      dir=$(dirname "$f")
-      filename_with_ext=$(basename "$f")
-      base="${filename_with_ext%.*}"
-      target_filename="${base}-h265_crf31.mp4"
-      target_path="${dir}/${target_filename}"
-
-      vid2gif_pro --src "$f" --to-mp4-h265 --crf 31 --target "$target_path"
-    done
-    ```
+  vid2gif_pro --src "$f" --to-mp4-h265 --crf ${crf} --target "$target_path"
+done
+```
 3.  Save and exit `nano`.
 4.  Make it executable:
     ```bash
@@ -145,25 +145,25 @@ We'll create separate scripts in `/usr/local/bin` for each conversion type. Thes
     sudo nano /usr/local/bin/vid2convert_wrapper_x264_half_size.sh
     ```
 2.  Paste the following content:
-    ```bash
-    #!/bin/zsh
-    # Wrapper script for H.264 (Half Size, CRF 29) conversion
+```bash
+#!/bin/zsh
+# Wrapper script for H.264 (Half Size, CRF 29) conversion
+crf=29
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+source "$HOME/.my_scripts/vid2gif_func.sh"
 
-    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    source "$HOME/.my_scripts/vid2gif_func.sh"
+for f in "$@"
+do
+  dir=$(dirname "$f")
+  filename_with_ext=$(basename "$f")
+  base="${filename_with_ext%.*}"
+  target_filename="${base}-h264_half_size_crf${crf}.mp4" # Adjusted name
+  target_path="${dir}/${target_filename}"
 
-    for f in "$@"
-    do
-      dir=$(dirname "$f")
-      filename_with_ext=$(basename "$f")
-      base="${filename_with_ext%.*}"
-      target_filename="${base}-h264_half_size_crf29.mp4" # Adjusted name
-      target_path="${dir}/${target_filename}"
-
-      # Added --half-size flag
-      vid2gif_pro --src "$f" --to-mp4-h264 --crf 29 --half-size --target "$target_path"
-    done
-    ```
+  # Added --half-size flag
+  vid2gif_pro --src "$f" --to-mp4-h264 --crf ${crf} --half-size --target "$target_path"
+done
+```
 3.  Save and exit `nano`.
 4.  Make it executable:
     ```bash
@@ -177,25 +177,25 @@ We'll create separate scripts in `/usr/local/bin` for each conversion type. Thes
     sudo nano /usr/local/bin/vid2convert_wrapper_x265_half_size.sh
     ```
 2.  Paste the following content:
-    ```bash
-    #!/bin/zsh
-    # Wrapper script for H.265 (Half Size, CRF 31) conversion
+```bash
+#!/bin/zsh
+# Wrapper script for H.265 (Half Size, CRF 31) conversion
+crf=31
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+source "$HOME/.my_scripts/vid2gif_func.sh"
 
-    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    source "$HOME/.my_scripts/vid2gif_func.sh"
+for f in "$@"
+do
+  dir=$(dirname "$f")
+  filename_with_ext=$(basename "$f")
+  base="${filename_with_ext%.*}"
+  target_filename="${base}-h265_half_size_crf${crf}.mp4" # Adjusted name
+  target_path="${dir}/${target_filename}"
 
-    for f in "$@"
-    do
-      dir=$(dirname "$f")
-      filename_with_ext=$(basename "$f")
-      base="${filename_with_ext%.*}"
-      target_filename="${base}-h265_half_size_crf31.mp4" # Adjusted name
-      target_path="${dir}/${target_filename}"
-
-      # Added --half-size flag
-      vid2gif_pro --src "$f" --to-mp4-h265 --crf 31 --half-size --target "$target_path"
-    done
-    ```
+  # Added --half-size flag
+  vid2gif_pro --src "$f" --to-mp4-h265 --crf ${crf} --half-size --target "$target_path"
+done
+```
 3.  Save and exit `nano`.
 4.  Make it executable:
     ```bash
