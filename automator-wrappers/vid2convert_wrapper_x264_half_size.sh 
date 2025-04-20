@@ -1,0 +1,17 @@
+#!/bin/zsh
+# Wrapper script for H.264 (Half Size, CRF 29) conversion
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+source "$HOME/.my_scripts/vid2gif_func.sh"
+
+for f in "$@"
+do
+  dir=$(dirname "$f")
+  filename_with_ext=$(basename "$f")
+  base="${filename_with_ext%.*}"
+  target_filename="${base}-h264_half_size_crf29.mp4" # Adjusted name
+  target_path="${dir}/${target_filename}"
+
+  # Added --half-size flag
+  vid2gif_pro --src "$f" --to-mp4-h264 --crf 29 --half-size --target "$target_path"
+done
