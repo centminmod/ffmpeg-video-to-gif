@@ -21,5 +21,5 @@ do
   # --- Execute conversion ---
   # vid2gif_pro defaults to GIF if no --to-mp4-* flag is given
   # Add other GIF flags like --fps or --lossy here if desired
-  vid2gif_pro --src "$f" --third-size --lossy --dither bayer --target "$target_path"
+  vid2gif_pro --src "$f" --third-size --lossy --dither bayer --fps 6 --target "$target_path"
 done
