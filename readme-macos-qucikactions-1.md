@@ -28,123 +28,164 @@ Example `three-js-demo-1.mov` Quick Action converted file sizes:
 
 ### Step 1: Create Wrapper Scripts
 
-We'll create separate scripts in `/usr/local/bin` for each conversion type (GIF, H.264, H.265). These scripts call your main `vid2gif_pro` function with specific settings.
+We'll create separate scripts in `/usr/local/bin` for each conversion type. These scripts call your main `vid2gif_pro` function with specific settings.
 
-**(A) Create GIF Wrapper Script (e.g., 1/3 Size):**
+**(A) Create GIF Wrapper Script (e.g., 1/3 Size Lossy):**
 
 1.  Open the file in `nano`:
     ```bash
     sudo nano /usr/local/bin/vid2convert_wrapper_gif_third_size.sh
     ```
-
 2.  Paste the following content:
     ```bash
     #!/bin/zsh
-    # Wrapper script for GIF (1/3 size) conversion via vid2gif_pro
+    # Wrapper script for GIF (1/3 size, lossy) conversion via vid2gif_pro
 
-    # Ensure Homebrew executables are found
     export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-
-    # Source the main function script (adjust path if needed)
     source "$HOME/.my_scripts/vid2gif_func.sh"
 
-    # Process each file passed from Finder
     for f in "$@"
     do
-      # --- Prepare output path ---
       dir=$(dirname "$f")
       filename_with_ext=$(basename "$f")
       base="${filename_with_ext%.*}"
-      # Define output filename
-      target_filename="${base}-third_size.gif"
+      target_filename="${base}-third_size_lossy.gif" # Updated name
       target_path="${dir}/${target_filename}"
 
-      # --- Execute conversion ---
-      # vid2gif_pro defaults to GIF if no --to-mp4-* flag is given
-      # Add other GIF flags like --fps or --lossy here if desired
+      # Execute conversion with specific GIF options
       vid2gif_pro --src "$f" --third-size --lossy --dither bayer --fps 6 --target "$target_path"
     done
     ```
-
 3.  Save and exit `nano` (`Ctrl+X`, `Y`, `Enter`).
-
-4.  Make the script executable:
+4.  Make it executable:
     ```bash
     sudo chmod +x /usr/local/bin/vid2convert_wrapper_gif_third_size.sh
     ```
 
-**(B) Create H.264 Wrapper Script:**
+**(B) Create H.264 Wrapper Script (CRF 29):**
 
 1.  Open the file in `nano`:
     ```bash
     sudo nano /usr/local/bin/vid2convert_wrapper_x264.sh
     ```
-
 2.  Paste the following content:
     ```bash
     #!/bin/zsh
-    # Wrapper script for H.264 conversion via vid2gif_pro
+    # Wrapper script for H.264 (CRF 29) conversion via vid2gif_pro
 
     export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
     source "$HOME/.my_scripts/vid2gif_func.sh"
 
     for f in "$@"
     do
-      # --- Prepare output path ---
       dir=$(dirname "$f")
       filename_with_ext=$(basename "$f")
       base="${filename_with_ext%.*}"
-      # Define output filename
       target_filename="${base}-h264_crf29.mp4"
       target_path="${dir}/${target_filename}"
 
-      # --- Execute conversion ---
       vid2gif_pro --src "$f" --to-mp4-h264 --crf 29 --target "$target_path"
     done
     ```
-
 3.  Save and exit `nano`.
-
-4.  Make the script executable:
+4.  Make it executable:
     ```bash
     sudo chmod +x /usr/local/bin/vid2convert_wrapper_x264.sh
     ```
 
-**(C) Create H.265 Wrapper Script:**
+**(C) Create H.265 Wrapper Script (CRF 31):**
 
 1.  Open the file in `nano`:
     ```bash
     sudo nano /usr/local/bin/vid2convert_wrapper_x265.sh
     ```
-
 2.  Paste the following content:
     ```bash
     #!/bin/zsh
-    # Wrapper script for H.265 conversion via vid2gif_pro
+    # Wrapper script for H.265 (CRF 31) conversion via vid2gif_pro
 
     export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
     source "$HOME/.my_scripts/vid2gif_func.sh"
 
     for f in "$@"
     do
-      # --- Prepare output path ---
       dir=$(dirname "$f")
       filename_with_ext=$(basename "$f")
       base="${filename_with_ext%.*}"
-      # Define output filename
       target_filename="${base}-h265_crf31.mp4"
       target_path="${dir}/${target_filename}"
 
-      # --- Execute conversion ---
       vid2gif_pro --src "$f" --to-mp4-h265 --crf 31 --target "$target_path"
     done
     ```
-
 3.  Save and exit `nano`.
-
-4.  Make the script executable:
+4.  Make it executable:
     ```bash
     sudo chmod +x /usr/local/bin/vid2convert_wrapper_x265.sh
+    ```
+
+**(D) Create H.264 Half-Size Wrapper Script:**
+
+1.  Open the file in `nano`:
+    ```bash
+    sudo nano /usr/local/bin/vid2convert_wrapper_x264_half_size.sh
+    ```
+2.  Paste the following content:
+    ```bash
+    #!/bin/zsh
+    # Wrapper script for H.264 (Half Size, CRF 29) conversion
+
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+    source "$HOME/.my_scripts/vid2gif_func.sh"
+
+    for f in "$@"
+    do
+      dir=$(dirname "$f")
+      filename_with_ext=$(basename "$f")
+      base="${filename_with_ext%.*}"
+      target_filename="${base}-h264_half_size_crf29.mp4" # Adjusted name
+      target_path="${dir}/${target_filename}"
+
+      # Added --half-size flag
+      vid2gif_pro --src "$f" --to-mp4-h264 --crf 29 --half-size --target "$target_path"
+    done
+    ```
+3.  Save and exit `nano`.
+4.  Make it executable:
+    ```bash
+    sudo chmod +x /usr/local/bin/vid2convert_wrapper_x264_half_size.sh
+    ```
+
+**(E) Create H.265 Half-Size Wrapper Script:**
+
+1.  Open the file in `nano`:
+    ```bash
+    sudo nano /usr/local/bin/vid2convert_wrapper_x265_half_size.sh
+    ```
+2.  Paste the following content:
+    ```bash
+    #!/bin/zsh
+    # Wrapper script for H.265 (Half Size, CRF 31) conversion
+
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+    source "$HOME/.my_scripts/vid2gif_func.sh"
+
+    for f in "$@"
+    do
+      dir=$(dirname "$f")
+      filename_with_ext=$(basename "$f")
+      base="${filename_with_ext%.*}"
+      target_filename="${base}-h265_half_size_crf31.mp4" # Adjusted name
+      target_path="${dir}/${target_filename}"
+
+      # Added --half-size flag
+      vid2gif_pro --src "$f" --to-mp4-h265 --crf 31 --half-size --target "$target_path"
+    done
+    ```
+3.  Save and exit `nano`.
+4.  Make it executable:
+    ```bash
+    sudo chmod +x /usr/local/bin/vid2convert_wrapper_x265_half_size.sh
     ```
 
 ### Step 2: Create Automator Quick Actions
@@ -155,46 +196,57 @@ Now, create a Quick Action for each wrapper script.
 
 1.  Launch **Automator**.
 2.  **File > New** (`⌘N`), choose **Quick Action**, click **Choose**.
-3.  Configure workflow: "Workflow receives current" → `movie files` in `Finder`. *(Optional: Choose Image)*.
+3.  Configure workflow: "Workflow receives current" → `movie files` in `Finder`.
 4.  Add the **Run Shell Script** action.
 5.  Configure action: Shell → `/bin/zsh`, Pass input → `as arguments`.
-6.  Script Code:
-    ```bash
-    /usr/local/bin/vid2convert_wrapper_gif_third_size.sh "$@"
-    ```
-7.  **File > Save** (`⌘S`). Name it (e.g., `Convert to GIF Third Size`).
+6.  Script Code: `/usr/local/bin/vid2convert_wrapper_gif_third_size.sh "$@"`
+7.  **File > Save** (`⌘S`). Name it `Convert to GIF (1/3 Size Lossy)`.
 
 **(B) Create H.264 Quick Action:**
 
 1.  Launch **Automator**.
 2.  **File > New** (`⌘N`), choose **Quick Action**, click **Choose**.
-3.  Configure workflow: "Workflow receives current" → `movie files` in `Finder`. *(Optional: Choose Image)*.
+3.  Configure workflow: "Workflow receives current" → `movie files` in `Finder`.
 4.  Add the **Run Shell Script** action.
 5.  Configure action: Shell → `/bin/zsh`, Pass input → `as arguments`.
-6.  Script Code:
-    ```bash
-    /usr/local/bin/vid2convert_wrapper_x264.sh "$@"
-    ```
-7.  **File > Save** (`⌘S`). Name it (e.g., `Convert to MP4 (H.264)`).
+6.  Script Code: `/usr/local/bin/vid2convert_wrapper_x264.sh "$@"`
+7.  **File > Save** (`⌘S`). Name it `Convert to MP4 (H.264)`.
 
 **(C) Create H.265 Quick Action:**
 
 1.  Launch **Automator**.
 2.  **File > New** (`⌘N`), choose **Quick Action**, click **Choose**.
-3.  Configure workflow: "Workflow receives current" → `movie files` in `Finder`. *(Optional: Choose Image)*.
+3.  Configure workflow: "Workflow receives current" → `movie files` in `Finder`.
 4.  Add the **Run Shell Script** action.
 5.  Configure action: Shell → `/bin/zsh`, Pass input → `as arguments`.
-6.  Script Code:
-    ```bash
-    /usr/local/bin/vid2convert_wrapper_x265.sh "$@"
-    ```
-7.  **File > Save** (`⌘S`). Name it (e.g., `Convert to MP4 (H.265)`).
+6.  Script Code: `/usr/local/bin/vid2convert_wrapper_x265.sh "$@"`
+7.  **File > Save** (`⌘S`). Name it `Convert to MP4 (H.265)`.
+
+**(D) Create H.264 Half-Size Quick Action:**
+
+1.  Launch **Automator**.
+2.  **File > New** (`⌘N`), choose **Quick Action**, click **Choose**.
+3.  Configure workflow: "Workflow receives current" → `movie files` in `Finder`.
+4.  Add the **Run Shell Script** action.
+5.  Configure action: Shell → `/bin/zsh`, Pass input → `as arguments`.
+6.  Script Code: `/usr/local/bin/vid2convert_wrapper_x264_half_size.sh "$@"`
+7.  **File > Save** (`⌘S`). Name it `Convert to MP4 (H.264 Half Size)`.
+
+**(E) Create H.265 Half-Size Quick Action:**
+
+1.  Launch **Automator**.
+2.  **File > New** (`⌘N`), choose **Quick Action**, click **Choose**.
+3.  Configure workflow: "Workflow receives current" → `movie files` in `Finder`.
+4.  Add the **Run Shell Script** action.
+5.  Configure action: Shell → `/bin/zsh`, Pass input → `as arguments`.
+6.  Script Code: `/usr/local/bin/vid2convert_wrapper_x265_half_size.sh "$@"`
+7.  **File > Save** (`⌘S`). Name it `Convert to MP4 (H.265 Half Size)`.
 
 ### Usage
 
 1.  Navigate to a video file (or select multiple) in Finder.
 2.  Right-click (or Control-click) the selection.
 3.  Hover over **Quick Actions**.
-4.  Select the desired conversion: `Convert to GIF Third Size`, `Convert to MP4 (H.264)`, or `Convert to MP4 (H.265)`. To rename the Quick Actions, you can find the files in `/Users/youruser/Library/Services`
+4.  Select the desired conversion: `Convert to GIF (1/3 Size Lossy)`, `Convert to MP4 (H.264)`, `Convert to MP4 (H.265)`, `Convert to MP4 (H.264 Half Size)`, or `Convert to MP4 (H.265 Half Size)`.
 
-The conversion will start using the settings defined in the corresponding wrapper script, and the output file will be saved in the same directory as the source file.
+The conversion will start using the settings defined in the corresponding wrapper script, and the output file will be saved in the same directory as the source file. To rename the Quick Actions later, you can find the `.workflow` files in `~/Library/Services` (accessible via Finder's `Go > Go to Folder...` menu).
