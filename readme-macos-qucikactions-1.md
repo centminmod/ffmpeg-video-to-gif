@@ -8,7 +8,7 @@ This method uses helper "wrapper" scripts for reliability, ensuring `ffmpeg`, `g
 
 <img src="screenshots/video-convert-quick-actions-2.png" alt="macOS Quick Actions setup using Automator" width="480" height="304">
 
-<img src="screenshots/video-convert-quick-actions-3.png" alt="macOS Quick Actions setup using Automator" width="480" height="468">
+<img src="screenshots/video-convert-quick-actions-4.png" alt="macOS Quick Actions setup using Automator" width="480" height="498">
 
 Example `three-js-demo-1.mov` Quick Action converted file sizes:
 
@@ -17,6 +17,8 @@ Example `three-js-demo-1.mov` Quick Action converted file sizes:
 3.2M 20 Apr 20:14 three-js-demo-1-third_size.gif
 2.7M 20 Apr 20:15 three-js-demo-1-h264_crf29.mp4
 2.3M 20 Apr 20:15 three-js-demo-1-h265_crf31.mp4
+944K 20 Apr 20:35 three-js-demo-1-h264_half_size_crf29.mp4
+891K 20 Apr 20:35 three-js-demo-1-h265_half_size_crf31.mp4
 ```
 
 ### Prerequisites
