@@ -1,6 +1,6 @@
 # Universal Video Converter Pro (`vid2gif_pro` / `vid2vid_pro`)
 
-A command-line Bash function for macOS users to convert videos to high-quality animated GIFs or efficiently encoded MP4 video formats (H.264, H.265/HEVC, AV1).
+A command-line Bash function for macOS users to convert videos to high-quality animated GIFs or efficiently encoded MP4 video formats (H.264, H.265/HEVC, AV1). After setting up this script, you can optionally [setup macOS right-click quick actions](readme-macos-qucikactions-1.md).
 
 Built upon `ffmpeg` and optionally `gifsicle` for optimization, this script provides fine-grained control over resolution, frame rate, cropping, quality, and output format and inspired by https://gist.github.com/SheldonWangRJT/8d3f44a35c8d1386a396b9b49b43c385 discussion.
 
