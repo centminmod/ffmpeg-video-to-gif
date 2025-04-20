@@ -4,9 +4,9 @@ This guide explains how to integrate the `vid2gif_pro` script with macOS Finder,
 
 This method uses helper "wrapper" scripts for reliability, ensuring `ffmpeg`, `gifsicle`, and other necessary tools are found correctly.
 
-~[macOS Quick Actions setup using Automator](screenshots/video-convert-quick-actions-1.png)
+![macOS Quick Actions setup using Automator](screenshots/video-convert-quick-actions-1.png)
 
-~[macOS Quick Actions setup using Automator](screenshots/video-convert-quick-actions-2.png)
+![macOS Quick Actions setup using Automator](screenshots/video-convert-quick-actions-2.png)
 
 ### Prerequisites
 
