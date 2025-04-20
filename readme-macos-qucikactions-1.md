@@ -21,6 +21,18 @@ Example `three-js-demo-1.mov` Quick Action converted file sizes:
 891K 20 Apr 20:35 three-js-demo-1-h265_half_size_crf31.mp4
 ```
 
+Example `https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_30MB.mp4` from https://test-videos.co.uk/bigbuckbunny/mp4-h264:
+
+
+```bash
+ 29M 20 Apr 22:52 Big_Buck_Bunny_1080_10s_30MB.mp4
+ 10M 20 Apr 22:53 Big_Buck_Bunny_1080_10s_30MB-third_size.gif
+2.9M 20 Apr 22:53 Big_Buck_Bunny_1080_10s_30MB-h264_crf29.mp4
+1.9M 20 Apr 22:54 Big_Buck_Bunny_1080_10s_30MB-h265_crf31.mp4
+848K 20 Apr 22:54 Big_Buck_Bunny_1080_10s_30MB-h264_half_size_crf29.mp4
+607K 20 Apr 22:54 Big_Buck_Bunny_1080_10s_30MB-h265_half_size_crf31.mp4
+```
+
 ### Prerequisites
 
 1.  **`vid2gif_func.sh` Installed:** Ensure you have followed the main installation steps for the `vid2gif_pro` function, specifically that the `vid2gif_func.sh` file exists (e.g., at `~/.my_scripts/vid2gif_func.sh`).
