@@ -1,6 +1,6 @@
 #!/bin/zsh
-# Wrapper script for H.264 (CRF 29) conversion via vid2gif_pro
-crf=29
+# Wrapper script for H.264 (CRF 33) conversion via vid2gif_pro
+crf=33
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 source "$HOME/.my_scripts/vid2gif_func.sh"
 

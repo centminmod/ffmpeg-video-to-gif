@@ -31,6 +31,8 @@ Example `https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunn
 1.9M 20 Apr 22:54 Big_Buck_Bunny_1080_10s_30MB-h265_crf31.mp4
 848K 20 Apr 22:54 Big_Buck_Bunny_1080_10s_30MB-h264_half_size_crf29.mp4
 607K 20 Apr 22:54 Big_Buck_Bunny_1080_10s_30MB-h265_half_size_crf31.mp4
+1.7M 21 Apr 04:33 Big_Buck_Bunny_1080_10s_30MB-h264_crf33.mp4
+989K 21 Apr 04:33 Big_Buck_Bunny_1080_10s_30MB-h265_crf35.mp4
 ```
 
 ### Prerequisites
@@ -76,7 +78,7 @@ done
     sudo chmod +x /usr/local/bin/vid2convert_wrapper_gif_third_size.sh
     ```
 
-**(B) Create H.264 Wrapper Script (CRF 29):**
+**(B) Create H.264 Wrapper Script (CRF 33):**
 
 1.  Open the file in `nano`:
     ```bash
@@ -85,8 +87,8 @@ done
 2.  Paste the following content:
 ```bash
 #!/bin/zsh
-# Wrapper script for H.264 (CRF 29) conversion via vid2gif_pro
-crf=29
+# Wrapper script for H.264 (CRF 33) conversion via vid2gif_pro
+crf=33
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 source "$HOME/.my_scripts/vid2gif_func.sh"
 
@@ -107,7 +109,7 @@ done
     sudo chmod +x /usr/local/bin/vid2convert_wrapper_x264.sh
     ```
 
-**(C) Create H.265 Wrapper Script (CRF 31):**
+**(C) Create H.265 Wrapper Script (CRF 35):**
 
 1.  Open the file in `nano`:
     ```bash
@@ -116,8 +118,8 @@ done
 2.  Paste the following content:
 ```bash
 #!/bin/zsh
-# Wrapper script for H.265 (CRF 31) conversion via vid2gif_pro
-crf=31
+# Wrapper script for H.265 (CRF 35) conversion via vid2gif_pro
+crf=35
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 source "$HOME/.my_scripts/vid2gif_func.sh"
 
