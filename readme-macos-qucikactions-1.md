@@ -8,6 +8,8 @@ This method uses helper "wrapper" scripts for reliability, ensuring `ffmpeg`, `g
 
 <img src="screenshots/video-convert-quick-actions-2.png" alt="macOS Quick Actions setup using Automator" width="480" height="304">
 
+<img src="screenshots/video-convert-quick-actions-3.png" alt="macOS Quick Actions setup using Automator" width="480" height="468">
+
 ### Prerequisites
 
 1.  **`vid2gif_func.sh` Installed:** Ensure you have followed the main installation steps for the `vid2gif_pro` function, specifically that the `vid2gif_func.sh` file exists (e.g., at `~/.my_scripts/vid2gif_func.sh`).
