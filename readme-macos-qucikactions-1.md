@@ -10,6 +10,15 @@ This method uses helper "wrapper" scripts for reliability, ensuring `ffmpeg`, `g
 
 <img src="screenshots/video-convert-quick-actions-3.png" alt="macOS Quick Actions setup using Automator" width="480" height="468">
 
+Example `three-js-demo-1.mov` Quick Action converted file sizes:
+
+```bash
+ 34M 19 Apr 23:48 three-js-demo-1.mov
+3.2M 20 Apr 20:14 three-js-demo-1-third_size.gif
+2.7M 20 Apr 20:15 three-js-demo-1-h264_crf29.mp4
+2.3M 20 Apr 20:15 three-js-demo-1-h265_crf31.mp4
+```
+
 ### Prerequisites
 
 1.  **`vid2gif_func.sh` Installed:** Ensure you have followed the main installation steps for the `vid2gif_pro` function, specifically that the `vid2gif_func.sh` file exists (e.g., at `~/.my_scripts/vid2gif_func.sh`).
