@@ -19,6 +19,14 @@ struct VidConvertApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Files handed over by the Finder Quick Action (M2) — or any other
+    /// LaunchServices open — queue exactly like a drop, with the preset
+    /// currently selected in the window.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        QueueModel.shared.add(urls)
+        application.activate(ignoringOtherApps: true)
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         let model = QueueModel.shared
         guard model.hasActiveWork else { return .terminateNow }

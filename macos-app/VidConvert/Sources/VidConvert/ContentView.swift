@@ -188,6 +188,13 @@ struct QueueRow: View {
         }
     }
 
+    private var removeButton: some View {
+        Button("Remove from list", systemImage: "xmark") { model.removeFinished(id: item.id) }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .help("Remove from list")
+    }
+
     @ViewBuilder private var trailing: some View {
         switch item.state {
         case .waiting:
@@ -208,10 +215,12 @@ struct QueueRow: View {
                 NSWorkspace.shared.activateFileViewerSelecting([output])
             }
             .controlSize(.small)
+            removeButton
         case .failed(let failure):
             Text(failure.wasCancelled ? "Cancelled" : "Failed")
                 .font(.caption)
                 .foregroundStyle(failure.wasCancelled ? Color.secondary : Color.red)
+            removeButton
         }
     }
 }

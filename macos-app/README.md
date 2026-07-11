@@ -8,9 +8,30 @@ Plan/PRD: [PRD-macos-converter-app.md](../PRD-macos-converter-app.md) — decisi
 engine = bundled ffmpeg (Option B), UI = SwiftUI (Plan A), Phase 1 = personal use
 (arm64-only, sandbox off, ad-hoc signing).
 
-**Status:** M0a spikes ✅ · M0b engine ✅ · M1 app ✅ (in daily-driver trial) · next: M2
-Finder Quick Action. Launch the app with `open VidConvert/build/VidConvert.app`
-(rebuild first via `./VidConvert/build-app.sh` if sources changed).
+**Status:** M0a spikes ✅ · M0b engine ✅ · M1 app ✅ (in daily-driver trial) · M2 Finder
+Quick Action ✅ built (right-click test pending) · next: M3 nice-to-haves. Launch the app
+with `open VidConvert/build/VidConvert.app` (rebuild first via `./VidConvert/build-app.sh`
+if sources changed).
+
+## M2 — Finder Quick Action ("Convert with VidConvert")
+
+Non-UI Action Extension per the S2 verdict, hand-built by `build-app.sh` with `swiftc`
+(entry point `_NSExtensionMain` — no Xcode project needed) into
+`VidConvert.app/Contents/PlugIns/VidConvertAction.appex`. Sources in
+[VidConvert/Extension/](VidConvert/Extension/). How it works:
+
+- Viewer role + returns `context.inputItems` (S2's Editor-role hazard), collects
+  in-place URLs via `loadInPlaceFileRepresentation`.
+- Hands the URLs to VidConvert.app with `NSWorkspace.open(_:withApplicationAt:)` —
+  the app queues them via `application(_:open:)` with the currently selected preset,
+  exactly like a drop. (The PRD's app-group *bookmark* handoff is only needed once the
+  app itself is sandboxed — deferred to Phase 2.)
+- Activation rule shows the menu item only for selections containing movie/video UTIs;
+  bare-UTI containers (mkv/webm without a claiming app) won't activate it — drag-and-drop
+  still accepts them.
+- Enablement: registered + elected via `pluginkit -e use -i local.vidconvert.action`
+  (otherwise System Settings ▸ Login Items & Extensions ▸ Finder). If the menu item
+  doesn't appear after a rebuild, Finder cached the old appex: `killall Finder`.
 
 ## M0a — platform spike week (complete)
 
@@ -50,8 +71,10 @@ macos-app/
                      # preset chips (Preset.all), serial queue driven by ConversionJob,
                      # per-item progress/cancel, reveal-in-Finder, failure rows with
                      # stderr tail, confirm-on-quit while converting.
-                     # Build the .app (bundles Vendor/ into Contents/Helpers, ad-hoc
-                     # signs): ./VidConvert/build-app.sh  →  open VidConvert/build/VidConvert.app
+                     # Extension/ (M2 ✅): the Finder Quick Action appex — see above.
+                     # Build the .app (bundles Vendor/ into Contents/Helpers + the
+                     # appex into Contents/PlugIns, ad-hoc signs):
+                     # ./VidConvert/build-app.sh  →  open VidConvert/build/VidConvert.app
                      # Dev loop: swift run (falls back to Homebrew tools, or set
                      # CONVERTER_TOOLS_DIR=…/Vendor)
   Vendor/            # (✅ pinned 2026-07-12) ffmpeg/ffprobe 8.1.2 static arm64 from

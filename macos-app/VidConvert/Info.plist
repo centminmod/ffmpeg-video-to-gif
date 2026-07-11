@@ -18,6 +18,45 @@
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<!-- Movie/video document claim: required for the M2 Quick Action handoff —
+	     LaunchServices refuses NSWorkspace open(_:withApplicationAt:) from the
+	     sandboxed appex unless the target app claims the documents' type.
+	     Viewer role + Alternate rank: never becomes the double-click default. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Video</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.movie</string>
+				<string>public.video</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- Containers macOS often has no UTI claim for (QueueModel fallback list) —
+			     extension-based claim so "Open With" offers VidConvert for these too. -->
+			<key>CFBundleTypeName</key>
+			<string>Video container</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>mkv</string>
+				<string>webm</string>
+				<string>flv</string>
+				<string>wmv</string>
+				<string>ts</string>
+				<string>m2ts</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>NSPrincipalClass</key>

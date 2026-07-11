@@ -160,6 +160,16 @@ final class QueueModel: ObservableObject {
         }
     }
 
+    /// Removes a single finished (done/failed) row; running/waiting rows go
+    /// through cancel(id:) instead.
+    func removeFinished(id: UUID) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        switch items[i].state {
+        case .done, .failed: items.remove(at: i)
+        case .waiting, .running: break
+        }
+    }
+
     func clearFinished() {
         items.removeAll { item in
             switch item.state {
