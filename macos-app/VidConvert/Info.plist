@@ -57,6 +57,19 @@
 			</array>
 		</dict>
 	</array>
+	<!-- vidconvert://convert?preset=<id>&file=<path>… — how the Quick Action appexes
+	     hand over the selection WITH the chosen preset (file opens carry no metadata). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>VidConvert conversion request</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>vidconvert</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>NSPrincipalClass</key>

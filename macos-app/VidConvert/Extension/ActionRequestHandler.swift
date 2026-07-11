@@ -1,6 +1,8 @@
-// M2 Finder Quick Action handler ("Convert with VidConvert"), per the S2 spike verdict.
-// Non-UI Action Extension: collects the selected files' in-place URLs and hands them to
-// the containing VidConvert.app, which queues them like a drop.
+// M2 Finder Quick Action handler, per the S2 spike verdict. ONE binary, FIVE appexes:
+// build-app.sh stamps each copy's Info.plist with a VidConvertPresetID, so the Finder
+// menu offers one entry per preset (mirroring the old Automator workflows). The handler
+// collects the selected files' in-place URLs and hands them to the containing
+// VidConvert.app as a vidconvert:// URL that carries the preset choice.
 //
 // S2 findings this code depends on (macos-app/Spikes/S2-QuickAction/README.md):
 // 1. Finder registers attachments under the file's CONTENT type, not public.file-url —
@@ -49,14 +51,28 @@ final class ActionRequestHandler: NSObject, NSExtensionRequestHandling {
                 NSLog("VidConvertAction: no in-place file URLs in selection")
                 return finish()
             }
-            // .appex is at VidConvert.app/Contents/PlugIns/VidConvertAction.appex
+            // .appex is at VidConvert.app/Contents/PlugIns/<this>.appex
             let appURL = Bundle.main.bundleURL
                 .deletingLastPathComponent()
                 .deletingLastPathComponent()
                 .deletingLastPathComponent()
+            // Preset rides along in a vidconvert:// URL — plain file-URL opens have no
+            // side channel for it. Paths are percent-encoded by URLComponents.
+            var components = URLComponents()
+            components.scheme = "vidconvert"
+            components.host = "convert"
+            var query = sorted.map { URLQueryItem(name: "file", value: $0.path) }
+            if let presetID = Bundle.main.object(forInfoDictionaryKey: "VidConvertPresetID") as? String {
+                query.insert(URLQueryItem(name: "preset", value: presetID), at: 0)
+            }
+            components.queryItems = query
+            guard let handoff = components.url else {
+                NSLog("VidConvertAction: could not build handoff URL")
+                return finish()
+            }
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.activates = true
-            NSWorkspace.shared.open(sorted, withApplicationAt: appURL,
+            NSWorkspace.shared.open([handoff], withApplicationAt: appURL,
                                     configuration: configuration) { _, error in
                 if let error {
                     NSLog("VidConvertAction: handoff to %@ failed: %@",

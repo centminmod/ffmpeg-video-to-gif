@@ -77,6 +77,7 @@ struct ContentView: View {
         case Preset.mp4H265.id: "H.265"
         case Preset.mp4H265Half.id: "H.265 ½"
         case Preset.gifSmall.id: "GIF ⅓"
+        case Preset.gifFull.id: "GIF"
         default: preset.displayName
         }
     }

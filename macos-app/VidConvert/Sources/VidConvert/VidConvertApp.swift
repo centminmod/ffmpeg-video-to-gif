@@ -19,11 +19,24 @@ struct VidConvertApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// Files handed over by the Finder Quick Action (M2) — or any other
-    /// LaunchServices open — queue exactly like a drop, with the preset
-    /// currently selected in the window.
+    /// Intake for the Finder Quick Actions (M2) and any other LaunchServices open.
+    /// vidconvert://convert?preset=<id>&file=<path>… queues with the preset the user
+    /// picked in the Finder menu; plain file URLs (Dock drop, "Open With") queue with
+    /// the preset currently selected in the window — same as a drop.
     func application(_ application: NSApplication, open urls: [URL]) {
-        QueueModel.shared.add(urls)
+        var files: [URL] = []
+        for url in urls {
+            if url.scheme == "vidconvert",
+               let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems {
+                let presetID = items.first { $0.name == "preset" }?.value
+                let handedOff = items.filter { $0.name == "file" }
+                    .compactMap { $0.value.map { URL(fileURLWithPath: $0) } }
+                QueueModel.shared.add(handedOff, presetID: presetID)
+            } else {
+                files.append(url)
+            }
+        }
+        if !files.isEmpty { QueueModel.shared.add(files) }
         application.activate(ignoringOtherApps: true)
     }
 

@@ -56,12 +56,13 @@ final class QueueModel: ObservableObject {
 
     // MARK: intake
 
-    /// Queues the video files among `urls` (each with the preset selected NOW) and
-    /// returns how many were skipped as non-videos.
+    /// Queues the video files among `urls` and returns how many were skipped as
+    /// non-videos. `presetID` (from a Quick Action handoff) overrides the preset
+    /// selected in the window; unknown/nil falls back to the current selection.
     @discardableResult
-    func add(_ urls: [URL]) -> Int {
+    func add(_ urls: [URL], presetID: String? = nil) -> Int {
         guard let tools else { return urls.count }
-        let preset = selectedPreset
+        let preset = Preset.all.first { $0.id == presetID } ?? selectedPreset
         var skipped = 0
         for url in urls {
             guard Self.isVideoFile(url) else { skipped += 1; continue }

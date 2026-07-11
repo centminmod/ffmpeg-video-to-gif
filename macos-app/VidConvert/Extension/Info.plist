@@ -2,14 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- TEMPLATE: build-app.sh copies this per preset and stamps CFBundleIdentifier,
+	     CFBundleDisplayName (the Finder menu label), and VidConvertPresetID. -->
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Convert with VidConvert</string>
+	<string>TEMPLATE-DISPLAY-NAME</string>
 	<key>CFBundleExecutable</key>
 	<string>VidConvertAction</string>
 	<key>CFBundleIdentifier</key>
-	<string>local.vidconvert.action</string>
+	<string>TEMPLATE-BUNDLE-ID</string>
+	<key>VidConvertPresetID</key>
+	<string>TEMPLATE-PRESET-ID</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

@@ -8,30 +8,36 @@ Plan/PRD: [PRD-macos-converter-app.md](../PRD-macos-converter-app.md) — decisi
 engine = bundled ffmpeg (Option B), UI = SwiftUI (Plan A), Phase 1 = personal use
 (arm64-only, sandbox off, ad-hoc signing).
 
-**Status:** M0a spikes ✅ · M0b engine ✅ · M1 app ✅ (in daily-driver trial) · M2 Finder
-Quick Action ✅ built (right-click test pending) · next: M3 nice-to-haves. Launch the app
-with `open VidConvert/build/VidConvert.app` (rebuild first via `./VidConvert/build-app.sh`
-if sources changed).
+**Status:** M0a spikes ✅ · M0b engine ✅ · M1 app ✅ · M2 Finder Quick Action ✅
+(user-verified) · next: M3 nice-to-haves. The app is installed at
+`/Applications/VidConvert.app` — after source changes run `./VidConvert/build-app.sh
+--install` to rebuild + reinstall + re-register (plain `./VidConvert/build-app.sh`
+just builds into `VidConvert/build/`).
 
-## M2 — Finder Quick Action ("Convert with VidConvert")
+## M2 — Finder Quick Actions ("VidConvert: H.264 / H.265 / GIF ⅓ …")
 
-Non-UI Action Extension per the S2 verdict, hand-built by `build-app.sh` with `swiftc`
-(entry point `_NSExtensionMain` — no Xcode project needed) into
-`VidConvert.app/Contents/PlugIns/VidConvertAction.appex`. Sources in
+Non-UI Action Extensions per the S2 verdict, hand-built by `build-app.sh` with `swiftc`
+(entry point `_NSExtensionMain` — no Xcode project needed): ONE compiled binary, SIX
+appexes in `VidConvert.app/Contents/PlugIns/` — each Info.plist stamped with a preset
+so Finder shows one menu entry per format, like the old Automator workflows. Sources in
 [VidConvert/Extension/](VidConvert/Extension/). How it works:
 
 - Viewer role + returns `context.inputItems` (S2's Editor-role hazard), collects
   in-place URLs via `loadInPlaceFileRepresentation`.
-- Hands the URLs to VidConvert.app with `NSWorkspace.open(_:withApplicationAt:)` —
-  the app queues them via `application(_:open:)` with the currently selected preset,
-  exactly like a drop. (The PRD's app-group *bookmark* handoff is only needed once the
-  app itself is sandboxed — deferred to Phase 2.)
-- Activation rule shows the menu item only for selections containing movie/video UTIs;
-  bare-UTI containers (mkv/webm without a claiming app) won't activate it — drag-and-drop
-  still accepts them.
-- Enablement: registered + elected via `pluginkit -e use -i local.vidconvert.action`
-  (otherwise System Settings ▸ Login Items & Extensions ▸ Finder). If the menu item
-  doesn't appear after a rebuild, Finder cached the old appex: `killall Finder`.
+- Hands the selection to VidConvert.app as a `vidconvert://convert?preset=<id>&file=…`
+  URL via `NSWorkspace.open(_:withApplicationAt:)` — the app parses it in
+  `application(_:open:)` and queues with the preset the user picked in the menu.
+  Plain file opens (Dock drop, "Open With") still queue with the window's selected
+  preset. (The PRD's app-group *bookmark* handoff is only needed once the app itself
+  is sandboxed — deferred to Phase 2.) The app must claim movie/video document types
+  AND the vidconvert: scheme — LaunchServices refuses the appex's open call otherwise.
+- Activation rule shows the menu items only for selections containing movie/video UTIs;
+  bare-UTI containers (mkv/webm without a claiming app) won't activate them —
+  drag-and-drop still accepts those.
+- Enablement: `build-app.sh --install` registers + elects all six via `pluginkit`
+  (otherwise System Settings ▸ Login Items & Extensions ▸ Finder). If a menu item
+  doesn't appear or misbehaves after a rebuild, Finder cached an old appex:
+  `killall Finder`.
 
 ## M0a — platform spike week (complete)
 
@@ -74,7 +80,8 @@ macos-app/
                      # Extension/ (M2 ✅): the Finder Quick Action appex — see above.
                      # Build the .app (bundles Vendor/ into Contents/Helpers + the
                      # appex into Contents/PlugIns, ad-hoc signs):
-                     # ./VidConvert/build-app.sh  →  open VidConvert/build/VidConvert.app
+                     # ./VidConvert/build-app.sh [--install]  (--install → /Applications
+                     # + re-registers app and Quick Action there)
                      # Dev loop: swift run (falls back to Homebrew tools, or set
                      # CONVERTER_TOOLS_DIR=…/Vendor)
   Vendor/            # (✅ pinned 2026-07-12) ffmpeg/ffprobe 8.1.2 static arm64 from

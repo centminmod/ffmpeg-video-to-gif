@@ -94,8 +94,9 @@ public struct ConversionOptions: Equatable, Sendable {
     }
 }
 
-/// The five shipped presets — exact ports of the Automator wrappers in
-/// ../../automator-wrappers/ (same CRFs, scales, and filename suffixes).
+/// The shipped presets — the first five are exact ports of the Automator wrappers in
+/// ../../automator-wrappers/ (same CRFs, scales, and filename suffixes); gifFull is
+/// new in the app (canonical bare-run defaults, no wrapper existed).
 public struct Preset: Identifiable, Equatable, Sendable {
     public let id: String
     public let displayName: String
@@ -130,5 +131,13 @@ public struct Preset: Identifiable, Equatable, Sendable {
                                    dither: "bayer", lossy: .defaultLevel),
         filenameSuffix: "-third_size", fileExtension: "gif")
 
-    public static let all: [Preset] = [mp4H264, mp4H264Half, mp4H265, mp4H265Half, gifSmall]
+    /// No Automator wrapper existed for this one — it mirrors a bare `vid2gif_pro`
+    /// run: original resolution, default_gif_fps=10, default dither, no lossy.
+    public static let gifFull = Preset(
+        id: "gif-full", displayName: "GIF · Full size",
+        options: ConversionOptions(format: .gif, fps: 10),
+        filenameSuffix: "-full_size", fileExtension: "gif")
+
+    public static let all: [Preset] = [mp4H264, mp4H264Half, mp4H265, mp4H265Half,
+                                       gifSmall, gifFull]
 }
