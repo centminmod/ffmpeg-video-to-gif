@@ -18,6 +18,9 @@ struct QueueItem: Identifiable {
     let job: ConversionJob
     let presetName: String
     var state: State = .waiting
+    /// Captured when the job finishes (the source could be moved/deleted afterwards).
+    var sourceBytes: Int64?
+    var outputBytes: Int64?
 
     var sourceName: String { job.source.lastPathComponent }
 }
@@ -134,9 +137,18 @@ final class QueueModel: ObservableObject {
     private func complete(id: UUID, outcome: QueueItem.State) {
         if let i = items.firstIndex(where: { $0.id == id }) {
             items[i].state = outcome
+            if case .done(let output) = outcome {
+                items[i].sourceBytes = Self.fileSize(items[i].job.source)
+                items[i].outputBytes = Self.fileSize(output)
+            }
         }
         isWorking = false
         pump()
+    }
+
+    private static func fileSize(_ url: URL) -> Int64? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64)
+            .flatMap { $0 }
     }
 
     // MARK: user actions

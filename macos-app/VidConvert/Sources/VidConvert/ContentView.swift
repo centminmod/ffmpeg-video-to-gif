@@ -212,6 +212,19 @@ struct QueueRow: View {
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
         case .done(let output):
+            MediaInfoButton(url: item.job.source, bytes: item.sourceBytes,
+                            help: "Original video info")
+            Image(systemName: "arrow.right")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            MediaInfoButton(url: output, bytes: item.outputBytes,
+                            help: "Converted video info")
+            if let source = item.sourceBytes, let converted = item.outputBytes, source > 0 {
+                let delta = Double(converted - source) / Double(source)
+                Text(delta.formatted(.percent.precision(.fractionLength(0)).sign(strategy: .always())))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(delta < 0 ? .green : .orange)
+            }
             Button("Show in Finder") {
                 NSWorkspace.shared.activateFileViewerSelecting([output])
             }
@@ -222,6 +235,78 @@ struct QueueRow: View {
                 .font(.caption)
                 .foregroundStyle(failure.wasCancelled ? Color.secondary : Color.red)
             removeButton
+        }
+    }
+}
+
+// MARK: - size badge + metadata popover
+
+/// "12.3 MB ⓘ" — the file's size with a click-for-metadata popover (probed lazily
+/// with ffprobe on first open, then cached for the row's lifetime).
+private struct MediaInfoButton: View {
+    let url: URL
+    let bytes: Int64?
+    let help: String
+    @EnvironmentObject private var model: QueueModel
+    @State private var showPopover = false
+    @State private var rows: [(label: String, value: String)]?
+    @State private var errorText: String?
+
+    var body: some View {
+        Button {
+            showPopover = true
+        } label: {
+            HStack(spacing: 3) {
+                Text(bytes.map { $0.formatted(.byteCount(style: .file)) } ?? "—")
+                    .font(.caption.monospacedDigit())
+                Image(systemName: "info.circle")
+                    .font(.caption)
+            }
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.borderless)
+        .help(help)
+        .popover(isPresented: $showPopover, arrowEdge: .bottom) {
+            popoverContent
+        }
+    }
+
+    @ViewBuilder private var popoverContent: some View {
+        Group {
+            if let rows {
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+                    ForEach(rows, id: \.label) { row in
+                        GridRow {
+                            Text(row.label).foregroundStyle(.secondary)
+                            Text(row.value).textSelection(.enabled)
+                        }
+                    }
+                }
+            } else if let errorText {
+                Text(errorText).foregroundStyle(.secondary)
+            } else {
+                ProgressView().controlSize(.small)
+            }
+        }
+        .font(.caption)
+        .padding(12)
+        .frame(minWidth: 200, alignment: .leading)
+        .task { await load() }
+    }
+
+    private func load() async {
+        guard rows == nil, errorText == nil else { return }
+        guard let ffprobe = model.tools?.ffprobe else {
+            errorText = "ffprobe unavailable"
+            return
+        }
+        let url = url
+        let result: Result<MediaDetails, Error> = await Task.detached(priority: .userInitiated) {
+            Result { try MediaDetails.probe(url: url, ffprobe: ffprobe) }
+        }.value
+        switch result {
+        case .success(let details): rows = details.rows
+        case .failure(let error): errorText = error.localizedDescription
         }
     }
 }
