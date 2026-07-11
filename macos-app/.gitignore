@@ -5,3 +5,4 @@ xcuserdata/
 DerivedData/
 Vendor/*
 !Vendor/MANIFEST.md
+build/

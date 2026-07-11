@@ -7,11 +7,18 @@
 
 import Foundation
 
-public struct JobFailure: Error {
+public struct JobFailure: Error, Sendable {
     public var step: String          // "probe" | "ffmpeg" | "gifsicle"
     public var exitCode: Int32?
     public var stderrTail: String    // surfaced in the failure UX (PRD §5.5)
     public var wasCancelled: Bool
+
+    public init(step: String, exitCode: Int32?, stderrTail: String, wasCancelled: Bool) {
+        self.step = step
+        self.exitCode = exitCode
+        self.stderrTail = stderrTail
+        self.wasCancelled = wasCancelled
+    }
 }
 
 public final class ConversionJob: @unchecked Sendable {
@@ -53,12 +60,26 @@ public final class ConversionJob: @unchecked Sendable {
 
         let info: MediaInfo
         do {
-            info = try MediaProbe.probe(source: source, ffprobe: tools.ffprobe)
+            // Register the probe's runner so cancel() reaches ffprobe too — otherwise
+            // a hung probe would be uncancellable and stall the whole serial queue.
+            let probeRunner = ProcessRunner()
+            lock.lock()
+            currentRunner = probeRunner
+            let alreadyCancelled = cancelled
+            lock.unlock()
+            defer { lock.lock(); currentRunner = nil; lock.unlock() }
+            if alreadyCancelled { throw MediaProbeError.cancelled }
+            info = try MediaProbe.probe(source: source, ffprobe: tools.ffprobe, runner: probeRunner)
         } catch let error as MediaProbeError {
-            let detail: String
-            if case .ffprobeFailed(_, let stderr) = error { detail = stderr }
-            else { detail = "unparseable ffprobe output" }
-            throw JobFailure(step: "probe", exitCode: nil, stderrTail: detail, wasCancelled: false)
+            switch error {
+            case .cancelled:
+                throw JobFailure(step: "probe", exitCode: nil, stderrTail: "", wasCancelled: true)
+            case .ffprobeFailed(let exitCode, let stderr):
+                throw JobFailure(step: "probe", exitCode: exitCode, stderrTail: stderr, wasCancelled: false)
+            case .unparseableOutput:
+                throw JobFailure(step: "probe", exitCode: nil,
+                                 stderrTail: "unparseable ffprobe output", wasCancelled: false)
+            }
         }
         let effectiveDuration = info.effectiveDuration(trim: options.trim)
 
@@ -100,16 +121,32 @@ public final class ConversionJob: @unchecked Sendable {
                         effectiveDuration: effectiveDuration,
                         progressRange: 0.45...0.9, onProgress: onProgress)
             if options.optimizeGif {
-                try runStep(name: "gifsicle", tool: tools.gifsicle,
-                            arguments: FFmpegCommandBuilder.gifsicleCommand(target: temp, options: options),
-                            effectiveDuration: nil,
-                            progressRange: 0.9...1.0, onProgress: onProgress)
+                do {
+                    try runStep(name: "gifsicle", tool: tools.gifsicle,
+                                arguments: FFmpegCommandBuilder.gifsicleCommand(target: temp, options: options),
+                                effectiveDuration: nil,
+                                progressRange: 0.9...1.0, onProgress: onProgress)
+                } catch let failure as JobFailure where !failure.wasCancelled {
+                    // Canonical spec (vid2gif_func.sh): a gifsicle optimization failure
+                    // is a warning — the rendered GIF is kept, unoptimized.
+                }
             }
         }
 
-        // Atomic publish. Re-check collisions (another job may have finished meanwhile).
-        let finalURL = Self.destination(for: source, preset: preset)
-        try FileManager.default.moveItem(at: temp, to: finalURL)
+        // Atomic publish. destination() re-checks collisions, but check-then-move is
+        // not atomic system-wide — on a lost race (external writer claims the name),
+        // recompute the next free suffix and retry.
+        var finalURL = Self.destination(for: source, preset: preset)
+        var attempts = 0
+        while true {
+            do {
+                try FileManager.default.moveItem(at: temp, to: finalURL)
+                break
+            } catch let error as CocoaError where error.code == .fileWriteFileExists && attempts < 5 {
+                attempts += 1
+                finalURL = Self.destination(for: source, preset: preset)
+            }
+        }
         onProgress?(1.0)
         return finalURL
     }
@@ -135,12 +172,19 @@ public final class ConversionJob: @unchecked Sendable {
                          effectiveDuration: Double?,
                          progressRange: ClosedRange<Double>,
                          onProgress: (@Sendable (Double?) -> Void)?) throws {
-        if isCancelled {
+        // Publish the runner and read the cancel flag in ONE critical section: a
+        // cancel() before it marks `cancelled` (checked below); a cancel() after it
+        // sees `currentRunner` and reaches the runner, which refuses to launch or
+        // SIGTERMs — no window where a cancel is silently lost.
+        let runner = ProcessRunner()
+        lock.lock()
+        currentRunner = runner
+        let alreadyCancelled = cancelled
+        lock.unlock()
+        defer { lock.lock(); currentRunner = nil; lock.unlock() }
+        if alreadyCancelled {
             throw JobFailure(step: name, exitCode: nil, stderrTail: "", wasCancelled: true)
         }
-        let runner = ProcessRunner()
-        lock.lock(); currentRunner = runner; lock.unlock()
-        defer { lock.lock(); currentRunner = nil; lock.unlock() }
 
         let parserBox = ParserBox()
         let result = try runner.run(tool: tool, arguments: arguments) { chunk in

@@ -15,6 +15,22 @@ public struct Tools: Sendable {
         self.gifsicle = gifsicle
     }
 
+    /// Explicit override: CONVERTER_TOOLS_DIR names a directory holding all three
+    /// binaries. This is the Vendor/ acceptance gate from Vendor/MANIFEST.md — it lets
+    /// the integration suite run against the pinned binaries instead of Homebrew.
+    public static func fromEnvironment() -> Tools? {
+        guard let dir = ProcessInfo.processInfo.environment["CONVERTER_TOOLS_DIR"] else { return nil }
+        let base = URL(fileURLWithPath: dir)
+        let tools = Tools(ffmpeg: base.appendingPathComponent("ffmpeg"),
+                          ffprobe: base.appendingPathComponent("ffprobe"),
+                          gifsicle: base.appendingPathComponent("gifsicle"))
+        let fm = FileManager.default
+        guard fm.isExecutableFile(atPath: tools.ffmpeg.path),
+              fm.isExecutableFile(atPath: tools.ffprobe.path),
+              fm.isExecutableFile(atPath: tools.gifsicle.path) else { return nil }
+        return tools
+    }
+
     /// Bundled helpers (Phase 1 posture: vendored arm64 binaries in Contents/Helpers).
     public static func bundled(in bundle: Bundle = .main) -> Tools? {
         let helpers = bundle.bundleURL.appendingPathComponent("Contents/Helpers")
@@ -43,6 +59,6 @@ public struct Tools: Sendable {
     }
 
     public static func locate() -> Tools? {
-        bundled() ?? development()
+        fromEnvironment() ?? bundled() ?? development()
     }
 }

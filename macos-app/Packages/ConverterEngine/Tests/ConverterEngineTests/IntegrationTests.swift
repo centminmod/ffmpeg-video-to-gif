@@ -18,7 +18,7 @@ final class IntegrationTests: XCTestCase {
 
     override class func setUp() {
         super.setUp()
-        tools = Tools.development()
+        tools = Tools.locate() // CONVERTER_TOOLS_DIR override → Vendor/ acceptance gate
         guard let tools else { return }
         fixtures = FileManager.default.temporaryDirectory
             .appendingPathComponent("engine-fixtures-\(UUID().uuidString.prefix(8))")
@@ -155,6 +155,21 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(values.last, 1.0, "completion must report 1.0")
         let determinate = values.compactMap { $0 }
         XCTAssertEqual(determinate, determinate.sorted(), "progress must be monotonic")
+    }
+
+    /// Canonical spec parity: vid2gif_func.sh treats a gifsicle failure as a warning
+    /// and keeps the rendered GIF — the job must succeed with the unoptimized file.
+    func testGifsicleFailureKeepsRenderedGif() throws {
+        let tools = try requireTools()
+        let brokenTools = Tools(ffmpeg: tools.ffmpeg, ffprobe: tools.ffprobe,
+                                gifsicle: URL(fileURLWithPath: "/usr/bin/false"))
+        let job = ConversionJob(source: Self.silentClip, preset: .gifSmall, tools: brokenTools)
+        let output = try job.run()
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: output.path))
+        let info = try probe(output, tools)
+        XCTAssertGreaterThan(info.durationSeconds ?? 0, 1.0, "unoptimized GIF must be intact")
     }
 
     func testFailureCapturesStderrTail_B8() throws {

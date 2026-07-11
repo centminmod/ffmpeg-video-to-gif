@@ -29,6 +29,7 @@ public struct MediaInfo: Equatable, Sendable {
 public enum MediaProbeError: Error, Equatable {
     case ffprobeFailed(exitCode: Int32, stderr: String)
     case unparseableOutput
+    case cancelled
 }
 
 public enum MediaProbe {
@@ -38,23 +39,24 @@ public enum MediaProbe {
     }
 
     /// Runs ffprobe synchronously (fast — metadata only) and parses the result.
-    public static func probe(source: URL, ffprobe: URL) throws -> MediaInfo {
-        let process = Process()
-        process.executableURL = ffprobe
-        process.arguments = arguments(for: source)
-        let stdout = Pipe(), stderr = Pipe()
-        process.standardOutput = stdout
-        process.standardError = stderr
-        try process.run()
-        let data = stdout.fileHandleForReading.readDataToEndOfFile()
-        let errData = stderr.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            throw MediaProbeError.ffprobeFailed(
-                exitCode: process.terminationStatus,
-                stderr: String(data: errData, encoding: .utf8) ?? "")
+    /// Goes through ProcessRunner so both pipes drain concurrently (no pipe-buffer
+    /// deadlock on chatty stderr) and the caller can register `runner` for cancellation.
+    public static func probe(source: URL, ffprobe: URL,
+                             runner: ProcessRunner = ProcessRunner()) throws -> MediaInfo {
+        let result: ProcessResult
+        do {
+            result = try runner.run(tool: ffprobe, arguments: arguments(for: source),
+                                    captureStdout: true)
+        } catch {
+            throw MediaProbeError.ffprobeFailed(exitCode: -1,
+                                                stderr: error.localizedDescription)
         }
-        return try parse(json: data)
+        if result.wasCancelled { throw MediaProbeError.cancelled }
+        guard result.exitCode == 0 else {
+            throw MediaProbeError.ffprobeFailed(exitCode: result.exitCode,
+                                                stderr: result.stderrTail)
+        }
+        return try parse(json: result.stdoutData ?? Data())
     }
 
     // MARK: parsing (separated for unit testing without ffprobe)

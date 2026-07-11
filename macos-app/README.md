@@ -8,7 +8,11 @@ Plan/PRD: [PRD-macos-converter-app.md](../PRD-macos-converter-app.md) — decisi
 engine = bundled ffmpeg (Option B), UI = SwiftUI (Plan A), Phase 1 = personal use
 (arm64-only, sandbox off, ad-hoc signing).
 
-## Current milestone: M0a — platform spike week
+**Status:** M0a spikes ✅ · M0b engine ✅ · M1 app ✅ (in daily-driver trial) · next: M2
+Finder Quick Action. Launch the app with `open VidConvert/build/VidConvert.app`
+(rebuild first via `./VidConvert/build-app.sh` if sources changed).
+
+## M0a — platform spike week (complete)
 
 | # | Spike | Question it answers | Runs with | Status |
 |---|-------|--------------------|-----------|--------|
@@ -20,7 +24,8 @@ engine = bundled ffmpeg (Option B), UI = SwiftUI (Plan A), Phase 1 = personal us
 Exit criteria feed M0b (the `ConverterEngine` package + golden-parity tests): S1 picks the
 drop implementation (→ `.dropDestination`, fallback not needed so far), S2 picks the Finder
 vehicle for M2 (→ Action Extension, Viewer role), S3 decides sandbox-on feasibility for
-Phase 2 (→ viable), S4 pins the vendored binaries (→ static arm64, source TBD).
+Phase 2 (→ viable), S4 pins the vendored binaries (→ static arm64 from martin-riedl.de,
+pinned with checksums in [Vendor/MANIFEST.md](Vendor/MANIFEST.md)).
 
 ## Toolchain note
 
@@ -41,6 +46,15 @@ macos-app/
                               # end-to-end integration tests against real ffmpeg.
                               # Run: DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
                               # (CLT alone lacks XCTest)
-  VidConvert/        # (M1) the SwiftUI app target
-  Vendor/            # pinned ffmpeg / ffprobe / gifsicle binaries (see Vendor/MANIFEST.md)
+  VidConvert/        # (M1 ✅) the SwiftUI app: drop zone (dropDestination per S1),
+                     # preset chips (Preset.all), serial queue driven by ConversionJob,
+                     # per-item progress/cancel, reveal-in-Finder, failure rows with
+                     # stderr tail, confirm-on-quit while converting.
+                     # Build the .app (bundles Vendor/ into Contents/Helpers, ad-hoc
+                     # signs): ./VidConvert/build-app.sh  →  open VidConvert/build/VidConvert.app
+                     # Dev loop: swift run (falls back to Homebrew tools, or set
+                     # CONVERTER_TOOLS_DIR=…/Vendor)
+  Vendor/            # (✅ pinned 2026-07-12) ffmpeg/ffprobe 8.1.2 static arm64 from
+                     # martin-riedl.de + brew gifsicle 1.96 — checksums & acceptance
+                     # results in Vendor/MANIFEST.md; binaries stay out of git
 ```
