@@ -7,6 +7,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 APP=SandboxSpike.app
+# A still-running instance makes `open` re-activate it instead of launching
+# fresh (the file panel only shows at launch) — kill it first.
+killall SandboxSpike 2>/dev/null || true
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 
