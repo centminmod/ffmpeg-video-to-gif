@@ -1,0 +1,134 @@
+// Value model for one conversion. Mirrors vid2gif_pro's flags (the canonical spec in
+// ../../vid2gif_func.sh) with the PRD §1 bug fixes; see FFmpegCommandBuilder for the
+// per-bug annotations.
+
+import Foundation
+
+public enum OutputFormat: Equatable, Sendable {
+    case gif
+    case mp4(VideoCodec)
+}
+
+public enum VideoCodec: String, Equatable, Sendable {
+    case h264 = "libx264"
+    case h265 = "libx265"
+    case av1 = "libsvtav1" // B7 fix: SVT-AV1, not libaom
+
+    /// B5 fix: per-codec CRF defaults (script used 23 for everything).
+    public var defaultCRF: Int {
+        switch self {
+        case .h264: 23
+        case .h265: 28
+        case .av1: 32
+        }
+    }
+}
+
+public enum Scale: Equatable, Sendable {
+    case original
+    case half            // scale=iw/2:-2
+    case third           // scale=iw/3:-2
+    case fitWidth(Int)   // scale=W:-2
+    case fitHeight(Int)  // scale=-2:H
+    // B3 note: the script silently dropped H when both W and H were given. The engine
+    // has no WxH case at all — the UI offers explicit fit-width/fit-height (fit-box is
+    // a v1.x addition), so the ambiguity cannot arise.
+
+    var filter: String? {
+        switch self {
+        case .original: nil
+        case .half: "scale=iw/2:-2"
+        case .third: "scale=iw/3:-2"
+        case .fitWidth(let w): "scale=\(w):-2"
+        case .fitHeight(let h): "scale=-2:\(h)"
+        }
+    }
+}
+
+public struct Trim: Equatable, Sendable {
+    /// ffmpeg time expressions ("12", "00:01:30", "1:30.5"), validated at the UI layer.
+    public var start: String?
+    public var end: String?
+    public init(start: String? = nil, end: String? = nil) {
+        self.start = start
+        self.end = end
+    }
+    public var isEmpty: Bool { start == nil && end == nil }
+}
+
+public enum GifLossy: Equatable, Sendable {
+    case off
+    case defaultLevel    // gifsicle --lossy
+    case level(Int)      // gifsicle --lossy=N
+}
+
+public struct ConversionOptions: Equatable, Sendable {
+    public var format: OutputFormat
+    public var scale: Scale
+    public var fps: Int?          // required-with-default for GIF (10), optional for MP4
+    public var crf: Int?          // nil → codec default (B5)
+    public var preset: String     // x264/x265 preset
+    public var trim: Trim
+    public var dither: String     // paletteuse dither algo
+    public var lossy: GifLossy
+    public var optimizeGif: Bool  // gifsicle -O3 pass
+
+    public init(format: OutputFormat,
+                scale: Scale = .original,
+                fps: Int? = nil,
+                crf: Int? = nil,
+                preset: String = "medium",
+                trim: Trim = Trim(),
+                dither: String = "sierra2_4a",
+                lossy: GifLossy = .off,
+                optimizeGif: Bool = true) {
+        self.format = format
+        self.scale = scale
+        self.fps = fps
+        self.crf = crf
+        self.preset = preset
+        self.trim = trim
+        self.dither = dither
+        self.lossy = lossy
+        self.optimizeGif = optimizeGif
+    }
+}
+
+/// The five shipped presets — exact ports of the Automator wrappers in
+/// ../../automator-wrappers/ (same CRFs, scales, and filename suffixes).
+public struct Preset: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let displayName: String
+    public let options: ConversionOptions
+    /// Appended to the source basename, e.g. "-h264_crf33" → "clip-h264_crf33.mp4".
+    public let filenameSuffix: String
+    public let fileExtension: String
+
+    public static let mp4H264 = Preset(
+        id: "mp4-h264", displayName: "MP4 · Compatible (H.264)",
+        options: ConversionOptions(format: .mp4(.h264), crf: 33),
+        filenameSuffix: "-h264_crf33", fileExtension: "mp4")
+
+    public static let mp4H264Half = Preset(
+        id: "mp4-h264-half", displayName: "MP4 · Compatible (H.264, ½ size)",
+        options: ConversionOptions(format: .mp4(.h264), scale: .half, crf: 29),
+        filenameSuffix: "-h264_half_size_crf29", fileExtension: "mp4")
+
+    public static let mp4H265 = Preset(
+        id: "mp4-h265", displayName: "MP4 · Smaller (H.265)",
+        options: ConversionOptions(format: .mp4(.h265), crf: 35),
+        filenameSuffix: "-h265_crf35", fileExtension: "mp4")
+
+    public static let mp4H265Half = Preset(
+        id: "mp4-h265-half", displayName: "MP4 · Smaller (H.265, ½ size)",
+        options: ConversionOptions(format: .mp4(.h265), scale: .half, crf: 31),
+        filenameSuffix: "-h265_half_size_crf31", fileExtension: "mp4")
+
+    public static let gifSmall = Preset(
+        id: "gif-small", displayName: "GIF · Small (⅓ size)",
+        options: ConversionOptions(format: .gif, scale: .third, fps: 6,
+                                   dither: "bayer", lossy: .defaultLevel),
+        filenameSuffix: "-third_size", fileExtension: "gif")
+
+    public static let all: [Preset] = [mp4H264, mp4H264Half, mp4H265, mp4H265Half, gifSmall]
+}

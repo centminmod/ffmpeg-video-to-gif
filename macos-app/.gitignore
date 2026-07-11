@@ -3,3 +3,5 @@
 SandboxSpike.app/
 xcuserdata/
 DerivedData/
+Vendor/*
+!Vendor/MANIFEST.md
