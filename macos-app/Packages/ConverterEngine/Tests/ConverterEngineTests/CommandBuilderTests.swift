@@ -40,7 +40,7 @@ final class CommandBuilderTests: XCTestCase {
         XCTAssertEqual(args, [
             "-y", "-nostdin", "-v", "error",
             "-i", "/tmp/in/clip.mov",
-            "-vf", "scale=iw/2:-2",                // exact script scale filter
+            "-vf", "scale=trunc(iw/4)*2:-2",       // B11: even width (script's iw/2 breaks 854x480)
             "-c:v", "libx264", "-preset", "medium", "-crf", "29",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "128k",
@@ -76,7 +76,7 @@ final class CommandBuilderTests: XCTestCase {
         XCTAssertEqual(args, [
             "-y", "-nostdin", "-v", "error",
             "-i", "/tmp/in/clip.mov",
-            "-vf", "scale=iw/2:-2",
+            "-vf", "scale=trunc(iw/4)*2:-2",       // B11, as in the H.264 half test
             "-c:v", "libx265", "-preset", "medium", "-crf", "31",
             "-pix_fmt", "yuv420p",
             "-tag:v", "hvc1",
@@ -85,6 +85,47 @@ final class CommandBuilderTests: XCTestCase {
             "-progress", "pipe:1",
             "/tmp/in/clip-out.mp4",
         ])
+    }
+
+    // MARK: M3 VideoToolbox fast tier
+
+    func testH264VTPreset() {
+        let args = FFmpegCommandBuilder.mp4Command(
+            source: src, destination: dst, options: Preset.mp4H264VT.options,
+            audio: AudioPlan(mode: .transcodeAAC))
+        XCTAssertEqual(args, [
+            "-y", "-nostdin", "-v", "error",
+            "-i", "/tmp/in/clip.mov",
+            "-c:v", "h264_videotoolbox", "-q:v", "50", // crf storage reinterpreted as -q:v
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            "-progress", "pipe:1",
+            "/tmp/in/clip-out.mp4",
+        ])
+        // VideoToolbox ignores x264-style presets and has no CRF mode.
+        XCTAssertFalse(args.contains("-preset"))
+        XCTAssertFalse(args.contains("-crf"))
+        XCTAssertFalse(args.contains("-tag:v"), "hvc1 tag is HEVC-only")
+    }
+
+    func testHEVCVTPreset() {
+        let args = FFmpegCommandBuilder.mp4Command(
+            source: src, destination: dst, options: Preset.mp4HEVCVT.options,
+            audio: AudioPlan(mode: .transcodeAAC))
+        XCTAssertEqual(args, [
+            "-y", "-nostdin", "-v", "error",
+            "-i", "/tmp/in/clip.mov",
+            "-c:v", "hevc_videotoolbox", "-q:v", "50",
+            "-pix_fmt", "yuv420p",
+            "-tag:v", "hvc1",                      // B9 applies to hardware HEVC too
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            "-progress", "pipe:1",
+            "/tmp/in/clip-out.mp4",
+        ])
+        XCTAssertFalse(args.contains("-preset"))
+        XCTAssertFalse(args.contains("-crf"))
     }
 
     // MARK: GIF preset (two passes + gifsicle)
@@ -158,6 +199,9 @@ final class CommandBuilderTests: XCTestCase {
         XCTAssertEqual(VideoCodec.h264.defaultCRF, 23)
         XCTAssertEqual(VideoCodec.h265.defaultCRF, 28)
         XCTAssertEqual(VideoCodec.av1.defaultCRF, 32)
+        // VT: defaultCRF is the -q:v quality value (higher = better), not a CRF.
+        XCTAssertEqual(VideoCodec.h264VT.defaultCRF, 50)
+        XCTAssertEqual(VideoCodec.hevcVT.defaultCRF, 50)
         let args = FFmpegCommandBuilder.mp4Command(
             source: src, destination: dst,
             options: ConversionOptions(format: .mp4(.h265)), audio: AudioPlan(mode: .none))
@@ -196,8 +240,21 @@ final class CommandBuilderTests: XCTestCase {
     // MARK: scale variants
 
     func testFitWidthAndFitHeightFilters() {
-        XCTAssertEqual(Scale.fitWidth(1280).filter, "scale=1280:-2")
-        XCTAssertEqual(Scale.fitHeight(720).filter, "scale=-2:720")
-        XCTAssertNil(Scale.original.filter)
+        XCTAssertEqual(Scale.fitWidth(1280).filter(evenDimensions: true), "scale=1280:-2")
+        XCTAssertEqual(Scale.fitHeight(720).filter(evenDimensions: true), "scale=-2:720")
+        XCTAssertNil(Scale.original.filter(evenDimensions: true))
+    }
+
+    // B11: MP4 (yuv420p) scale expressions must yield even dimensions — the
+    // script's iw/2 halves 854 to an odd 427 and libx264 refuses to encode.
+    // GIF keeps the script-exact filters (no even-dimension constraint).
+    func testEvenDimensionScaleFilters_B11() {
+        XCTAssertEqual(Scale.half.filter(evenDimensions: true), "scale=trunc(iw/4)*2:-2")
+        XCTAssertEqual(Scale.third.filter(evenDimensions: true), "scale=trunc(iw/6)*2:-2")
+        XCTAssertEqual(Scale.half.filter(evenDimensions: false), "scale=iw/2:-2")
+        XCTAssertEqual(Scale.third.filter(evenDimensions: false), "scale=iw/3:-2")
+        XCTAssertEqual(Scale.fitWidth(855).filter(evenDimensions: true), "scale=854:-2")
+        XCTAssertEqual(Scale.fitHeight(481).filter(evenDimensions: true), "scale=-2:480")
+        XCTAssertEqual(Scale.fitWidth(855).filter(evenDimensions: false), "scale=855:-2")
     }
 }

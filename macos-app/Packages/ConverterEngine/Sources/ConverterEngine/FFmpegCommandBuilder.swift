@@ -45,9 +45,14 @@ public enum FFmpegCommandBuilder {
     }
 
     /// Video filter chain in script order: scale, then fps (crop is a v1.x addition).
+    /// MP4 gets even-safe scale expressions (yuv420p requires even dimensions — B11);
+    /// GIF keeps the script-exact filters.
     static func filterChain(options: ConversionOptions) -> String? {
         var filters: [String] = []
-        if let scale = options.scale.filter { filters.append(scale) }
+        let evenDimensions = if case .mp4 = options.format { true } else { false }
+        if let scale = options.scale.filter(evenDimensions: evenDimensions) {
+            filters.append(scale)
+        }
         if case .gif = options.format {
             filters.append("fps=\(options.fps ?? 10)") // script default_gif_fps=10
         }
@@ -84,9 +89,13 @@ public enum FFmpegCommandBuilder {
             // its speed dial, distinct from the x264/x265 named presets).
             args += ["-preset", "8"]
             args += ["-crf", String(options.crf ?? codec.defaultCRF)]
+        case .h264VT, .hevcVT:
+            // M3 fast tier: VideoToolbox ignores x264-style presets; options.crf is
+            // reinterpreted as the -q:v constant-quality value (see VideoCodec).
+            args += ["-q:v", String(options.crf ?? codec.defaultCRF)]
         }
         args += ["-pix_fmt", "yuv420p"] // B2 fix: SDR/compatibility promise for v1
-        if codec == .h265 {
+        if codec == .h265 || codec == .hevcVT {
             args += ["-tag:v", "hvc1"] // B9 fix: QuickTime/Safari playback
         }
         args += audio.arguments // B6/B10 via AudioPlan

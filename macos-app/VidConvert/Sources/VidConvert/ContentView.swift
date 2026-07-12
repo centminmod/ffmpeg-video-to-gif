@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @EnvironmentObject private var model: QueueModel
+    @EnvironmentObject private var presetStore: PresetStore
+    @AppStorage(UIScale.key) private var uiScale = UIScale.defaultValue
     @State private var isDropTargeted = false
     @State private var showImporter = false
 
@@ -14,14 +16,22 @@ struct ContentView: View {
         VStack(spacing: 12) {
             if model.tools == nil { missingToolsBanner }
             presetRow
+            trimBar
             dropZone
             queueList
         }
+        .scaledFont(13) // default for everything without an explicit font
         .padding(12)
         .toolbar {
             ToolbarItem {
                 Button("Add Videos…", systemImage: "plus") { showImporter = true }
                     .disabled(model.tools == nil)
+            }
+            ToolbarItem {
+                SettingsLink {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .help("Settings")
             }
             ToolbarItem {
                 Button("Clear Finished", systemImage: "trash") { model.clearFinished() }
@@ -40,33 +50,38 @@ struct ContentView: View {
     private var missingToolsBanner: some View {
         Label("ffmpeg/ffprobe/gifsicle not found — launch the built app bundle (build-app.sh) or `brew install ffmpeg gifsicle`",
               systemImage: "exclamationmark.triangle.fill")
-            .font(.callout)
+            .scaledFont(12)
             .padding(8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.yellow.opacity(0.2), in: RoundedRectangle(cornerRadius: 6))
     }
 
     private var presetRow: some View {
-        HStack(spacing: 6) {
-            ForEach(Preset.all) { preset in
-                let isSelected = model.selectedPresetID == preset.id
-                Button {
-                    model.selectedPresetID = preset.id
-                } label: {
-                    Text(Self.chipName(for: preset))
-                        .font(.callout)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 5)
-                        .background(isSelected ? AnyShapeStyle(Color.accentColor)
-                                               : AnyShapeStyle(.quaternary),
-                                    in: Capsule())
-                        .foregroundStyle(isSelected ? AnyShapeStyle(.white)
-                                                    : AnyShapeStyle(.primary))
+        // Nine built-ins plus customs overflow any sane window width — scroll.
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(presetStore.effectivePresets) { preset in
+                    // Resolved preset, not the raw id: after deleting the selected
+                    // custom preset, selectedPreset falls back to mp4H264 and that
+                    // chip must highlight (the stale id matches no chip).
+                    let isSelected = model.selectedPreset.id == preset.id
+                    Button {
+                        model.selectedPresetID = preset.id
+                    } label: {
+                        Text(Self.chipName(for: preset))
+                            .scaledFont(12)
+                            .padding(.horizontal, 11 * uiScale)
+                            .padding(.vertical, 5 * uiScale)
+                            .background(isSelected ? AnyShapeStyle(Color.accentColor)
+                                                   : AnyShapeStyle(.quaternary),
+                                        in: Capsule())
+                            .foregroundStyle(isSelected ? AnyShapeStyle(.white)
+                                                        : AnyShapeStyle(.primary))
+                    }
+                    .buttonStyle(.plain)
+                    .help(preset.displayName)
                 }
-                .buttonStyle(.plain)
-                .help(preset.displayName)
             }
-            Spacer()
         }
     }
 
@@ -78,22 +93,69 @@ struct ContentView: View {
         case Preset.mp4H265Half.id: "H.265 ½"
         case Preset.gifSmall.id: "GIF ⅓"
         case Preset.gifFull.id: "GIF"
-        default: preset.displayName
+        case Preset.mp4AV1.id: "AV1"
+        case Preset.mp4H264VT.id: "H.264 ⚡"
+        case Preset.mp4HEVCVT.id: "H.265 ⚡"
+        default: preset.displayName // customs: the user's own (short) name
         }
+    }
+
+    /// Optional trim applied to every job queued while set (per-session, not saved).
+    /// Invalid input gets a red border and is ignored for jobs — see
+    /// QueueModel.isValidTime (ffmpeg is the final validator).
+    private var trimBar: some View {
+        HStack(spacing: 6) {
+            Text("Trim")
+                .scaledFont(12)
+                .foregroundStyle(.secondary)
+            trimField("start (e.g. 0:05)", text: $model.trimStart)
+            Text("–")
+                .scaledFont(12)
+                .foregroundStyle(.tertiary)
+            trimField("end (e.g. 0:20)", text: $model.trimEnd)
+            if !model.trimStart.isEmpty || !model.trimEnd.isEmpty {
+                Button("Clear trim", systemImage: "xmark.circle.fill") {
+                    model.trimStart = ""
+                    model.trimEnd = ""
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("Clear trim")
+            }
+            Spacer()
+        }
+    }
+
+    private func trimField(_ prompt: String, text: Binding<String>) -> some View {
+        let value = text.wrappedValue.trimmingCharacters(in: .whitespaces)
+        let formatInvalid = !value.isEmpty && !QueueModel.isValidTime(value)
+        // A backwards range (start >= end, both valid) flags BOTH fields — each
+        // is fine alone, so neither would go red otherwise; see trimRangeInvalid.
+        let isInvalid = formatInvalid || model.trimRangeInvalid
+        return TextField(prompt, text: text)
+            .textFieldStyle(.roundedBorder)
+            .scaledFont(12)
+            .frame(width: 115 * uiScale) // fits the full placeholder example
+            .overlay(RoundedRectangle(cornerRadius: 5)
+                .stroke(Color.red, lineWidth: 1)
+                .opacity(isInvalid ? 1 : 0))
+            .help(formatInvalid ? "Not a time — use SS, MM:SS, or HH:MM:SS (ignored until fixed)"
+                  : isInvalid ? "Trim start must be before end (ignored until fixed)" : "")
     }
 
     private var dropZone: some View {
         VStack(spacing: 6) {
             Image(systemName: "arrow.down.doc")
-                .font(.system(size: 28))
+                .scaledFont(28)
                 .foregroundStyle(.secondary)
-            Text("Drop videos here")
+            Text("Drop videos or folders here")
                 .foregroundStyle(.secondary)
-            Text("converted with “\(model.selectedPreset.displayName)”, saved next to the original")
-                .font(.caption)
+            Text(dropHint)
+                .scaledFont(10)
                 .foregroundStyle(.tertiary)
         }
-        .frame(maxWidth: .infinity, minHeight: 110)
+        .frame(maxWidth: .infinity, minHeight: 110 * uiScale)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(isDropTargeted ? Color.accentColor : Color.secondary.opacity(0.4),
@@ -106,6 +168,11 @@ struct ContentView: View {
         } isTargeted: {
             isDropTargeted = $0
         }
+    }
+
+    private var dropHint: String {
+        let trimmed = model.activeTrimLabel.map { ", trimmed \($0)" } ?? ""
+        return "converted with “\(model.selectedPreset.displayName)”\(trimmed), saved next to the original"
     }
 
     private var queueList: some View {
@@ -121,7 +188,7 @@ struct ContentView: View {
             }
         }
         .listStyle(.inset)
-        .frame(minHeight: 160)
+        .frame(minHeight: 160 * uiScale)
     }
 }
 
@@ -140,8 +207,8 @@ struct QueueRow: View {
                         .fontWeight(.medium)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    Text(item.presetName)
-                        .font(.caption)
+                    Text(item.trimLabel.map { "\(item.presetName) · trim \($0)" } ?? item.presetName)
+                        .scaledFont(10)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -155,12 +222,12 @@ struct QueueRow: View {
             if case .failed(let failure) = item.state, !failure.wasCancelled {
                 DisclosureGroup {
                     Text(errorDetail(failure))
-                        .font(.caption.monospaced())
+                        .scaledFont(10, design: .monospaced)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
-                    Text("Error details").font(.caption)
+                    Text("Error details").scaledFont(10)
                 }
             }
         }
@@ -205,7 +272,7 @@ struct QueueRow: View {
         case .running(let fraction):
             if let fraction {
                 Text(fraction.formatted(.percent.precision(.fractionLength(0))))
-                    .font(.caption.monospacedDigit())
+                    .scaledFont(10, monospacedDigit: true)
                     .foregroundStyle(.secondary)
             }
             Button("Cancel", systemImage: "xmark") { model.cancel(id: item.id) }
@@ -215,14 +282,14 @@ struct QueueRow: View {
             MediaInfoButton(url: item.job.source, bytes: item.sourceBytes,
                             help: "Original video info")
             Image(systemName: "arrow.right")
-                .font(.caption2)
+                .scaledFont(9)
                 .foregroundStyle(.tertiary)
             MediaInfoButton(url: output, bytes: item.outputBytes,
                             help: "Converted video info")
             if let source = item.sourceBytes, let converted = item.outputBytes, source > 0 {
                 let delta = Double(converted - source) / Double(source)
                 Text(delta.formatted(.percent.precision(.fractionLength(0)).sign(strategy: .always())))
-                    .font(.caption.monospacedDigit())
+                    .scaledFont(10, monospacedDigit: true)
                     .foregroundStyle(delta < 0 ? .green : .orange)
             }
             Button("Show in Finder") {
@@ -232,7 +299,7 @@ struct QueueRow: View {
             removeButton
         case .failed(let failure):
             Text(failure.wasCancelled ? "Cancelled" : "Failed")
-                .font(.caption)
+                .scaledFont(10)
                 .foregroundStyle(failure.wasCancelled ? Color.secondary : Color.red)
             removeButton
         }
@@ -258,9 +325,9 @@ private struct MediaInfoButton: View {
         } label: {
             HStack(spacing: 3) {
                 Text(bytes.map { $0.formatted(.byteCount(style: .file)) } ?? "—")
-                    .font(.caption.monospacedDigit())
+                    .scaledFont(10, monospacedDigit: true)
                 Image(systemName: "info.circle")
-                    .font(.caption)
+                    .scaledFont(10)
             }
             .foregroundStyle(.secondary)
         }
@@ -288,7 +355,7 @@ private struct MediaInfoButton: View {
                 ProgressView().controlSize(.small)
             }
         }
-        .font(.caption)
+        .scaledFont(10)
         .padding(12)
         .frame(minWidth: 200, alignment: .leading)
         .task { await load() }

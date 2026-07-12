@@ -17,6 +17,9 @@ struct QueueItem: Identifiable {
     let id = UUID()
     let job: ConversionJob
     let presetName: String
+    /// Display string ("0:05–0:20") captured at creation — the trim fields are
+    /// per-session and may change while this job is still queued.
+    let trimLabel: String?
     var state: State = .waiting
     /// Captured when the job finishes (the source could be moved/deleted afterwards).
     var sourceBytes: Int64?
@@ -31,12 +34,17 @@ final class QueueModel: ObservableObject {
 
     @Published var items: [QueueItem] = []
     @Published var selectedPresetID: String = Preset.mp4H264.id
+    // Not persisted — a trim is per-session intent, not a setting.
+    @Published var trimStart: String = ""
+    @Published var trimEnd: String = ""
 
     let tools = Tools.locate()
     private var isWorking = false
 
+    /// Resolved through PresetStore so overrides and custom presets apply
+    /// (falls back to mp4H264 if the selected custom was deleted).
     var selectedPreset: Preset {
-        Preset.all.first { $0.id == selectedPresetID } ?? .mp4H264
+        PresetStore.shared.preset(withID: selectedPresetID) ?? .mp4H264
     }
 
     var hasActiveWork: Bool {
@@ -57,23 +65,115 @@ final class QueueModel: ObservableObject {
         }
     }
 
+    // MARK: trim
+
+    /// Loose check for ffmpeg time syntax: SS(.ms), MM:SS(.ms), or HH:MM:SS(.ms).
+    /// Deliberately permissive — ffmpeg itself is the final validator; this only
+    /// keeps obviously malformed input out of jobs (and drives the red UI flag).
+    static func isValidTime(_ text: String) -> Bool {
+        text.range(of: #"^\d+(:[0-5]?\d){0,2}(\.\d+)?$"#, options: .regularExpression) != nil
+    }
+
+    /// The Trim built from the current fields, or nil when neither holds a valid
+    /// time. Invalid non-empty input is ignored here (that field contributes
+    /// nothing to jobs) and flagged red in the trim bar; a backwards range is
+    /// ignored as a whole (see trimRangeInvalid).
+    var activeTrim: Trim? {
+        guard !trimRangeInvalid else { return nil }
+        let start = Self.sanitizedTime(trimStart)
+        let end = Self.sanitizedTime(trimEnd)
+        guard start != nil || end != nil else { return nil }
+        return Trim(start: start, end: end)
+    }
+
+    /// True when both fields hold valid times but start >= end — ffmpeg aborts
+    /// every such job with "-to value smaller than -ss" (trim is input-side
+    /// -ss/-to), so the combination is dropped from jobs and flagged red.
+    var trimRangeInvalid: Bool {
+        guard let start = Self.sanitizedTime(trimStart).map(Self.seconds),
+              let end = Self.sanitizedTime(trimEnd).map(Self.seconds)
+        else { return false }
+        return start >= end
+    }
+
+    /// Display form of activeTrim, e.g. "0:05–0:20" ("start–0:20" when one-sided).
+    var activeTrimLabel: String? {
+        guard let trim = activeTrim else { return nil }
+        return "\(trim.start ?? "start")–\(trim.end ?? "end")"
+    }
+
+    private static func sanitizedTime(_ field: String) -> String? {
+        let text = field.trimmingCharacters(in: .whitespaces)
+        return (!text.isEmpty && isValidTime(text)) ? text : nil
+    }
+
+    /// Seconds for a string isValidTime accepted ("1:05" → 65). The regex caps
+    /// components at three and 0–59 for minutes/seconds, so left-fold by 60.
+    private static func seconds(_ text: String) -> Double {
+        text.split(separator: ":").reduce(0) { $0 * 60 + (Double($1) ?? 0) }
+    }
+
     // MARK: intake
 
-    /// Queues the video files among `urls` and returns how many were skipped as
-    /// non-videos. `presetID` (from a Quick Action handoff) overrides the preset
-    /// selected in the window; unknown/nil falls back to the current selection.
+    /// Queues the video files among `urls` and returns how many entries were skipped
+    /// (non-videos, and folders containing no videos). Folders are searched
+    /// recursively (M3). `presetID` (from a Quick Action handoff) overrides the
+    /// preset selected in the window; unknown/nil falls back to the current selection.
     @discardableResult
     func add(_ urls: [URL], presetID: String? = nil) -> Int {
         guard let tools else { return urls.count }
-        let preset = Preset.all.first { $0.id == presetID } ?? selectedPreset
+        var preset = presetID.flatMap { PresetStore.shared.preset(withID: $0) } ?? selectedPreset
+        let trimLabel: String?
+        // Window-originated intake only: a Finder Quick Action (presetID != nil)
+        // must not silently inherit a trim left set in a possibly background window.
+        if presetID == nil, let trim = activeTrim {
+            // Per-job copy with the trim; same id/suffix — repeated outputs are
+            // covered by ConversionJob's collision-safe "-2" naming.
+            var options = preset.options
+            options.trim = trim
+            preset = Preset(id: preset.id, displayName: preset.displayName,
+                            options: options, filenameSuffix: preset.filenameSuffix,
+                            fileExtension: preset.fileExtension)
+            trimLabel = activeTrimLabel
+        } else {
+            trimLabel = nil
+        }
         var skipped = 0
         for url in urls {
-            guard Self.isVideoFile(url) else { skipped += 1; continue }
-            items.append(QueueItem(job: ConversionJob(source: url, preset: preset, tools: tools),
-                                   presetName: preset.displayName))
+            let videos: [URL]
+            if Self.isDirectory(url) {
+                videos = Self.videosInFolder(url)
+            } else {
+                videos = Self.isVideoFile(url) ? [url] : []
+            }
+            guard !videos.isEmpty else { skipped += 1; continue }
+            for video in videos {
+                items.append(QueueItem(job: ConversionJob(source: video, preset: preset, tools: tools),
+                                       presetName: preset.displayName,
+                                       trimLabel: trimLabel))
+            }
         }
         pump()
         return skipped
+    }
+
+    private static func isDirectory(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+            && isDirectory.boolValue
+    }
+
+    /// All video files under `folder`, recursively, in stable path order. Hidden
+    /// files and package contents (e.g. .app, Final Cut libraries) are skipped.
+    private static func videosInFolder(_ folder: URL) -> [URL] {
+        guard let enumerator = FileManager.default.enumerator(
+            at: folder, includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return [] }
+        var videos: [URL] = []
+        for case let child as URL in enumerator where isVideoFile(child) {
+            videos.append(child)
+        }
+        return videos.sorted { $0.path < $1.path }
     }
 
     /// What the Open panel offers — kept in sync with isVideoFile's fallback list so
@@ -137,9 +237,17 @@ final class QueueModel: ObservableObject {
     private func complete(id: UUID, outcome: QueueItem.State) {
         if let i = items.firstIndex(where: { $0.id == id }) {
             items[i].state = outcome
-            if case .done(let output) = outcome {
+            switch outcome {
+            case .done(let output):
                 items[i].sourceBytes = Self.fileSize(items[i].job.source)
                 items[i].outputBytes = Self.fileSize(output)
+                Notifier.postIfBackground(title: "Conversion finished",
+                                          body: output.lastPathComponent)
+            case .failed(let failure) where !failure.wasCancelled:
+                Notifier.postIfBackground(title: "Conversion failed",
+                                          body: items[i].sourceName)
+            default:
+                break
             }
         }
         isWorking = false

@@ -95,6 +95,30 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(audio?["codec_name"] as? String, "aac")
     }
 
+    /// B11 regression: an 854×480 source (width 2 mod 4, common 480p geometry)
+    /// halves to an odd 427 with the script's iw/2 and libx264 refuses to encode;
+    /// the even-safe trunc(iw/4)*2 must produce 426×240 instead of failing.
+    func testHalfSizeHandlesOddHalfWidth_B11() throws {
+        let tools = try requireTools()
+        let source = Self.fixtures.appendingPathComponent("wide854.mp4")
+        let process = Process()
+        process.executableURL = tools.ffmpeg
+        process.arguments = ["-y", "-v", "error",
+                             "-f", "lavfi", "-i", "testsrc=duration=1:size=854x480:rate=15",
+                             "-pix_fmt", "yuv420p", "-c:v", "libx264", source.path]
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+
+        let job = ConversionJob(source: source, preset: .mp4H264Half, tools: tools)
+        let output = try job.run()
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        let video = try streamJSON(output, tools).first { $0["codec_type"] as? String == "video" }!
+        XCTAssertEqual(video["width"] as? Int, 426)
+        XCTAssertEqual(video["height"] as? Int, 240)
+    }
+
     func testH265PresetTagsHvc1_B9() throws {
         let tools = try requireTools()
         let job = ConversionJob(source: Self.silentClip, preset: .mp4H265Half, tools: tools)
@@ -108,6 +132,21 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(video["width"] as? Int, 160, "half of 320")
         XCTAssertNil(streams.first { $0["codec_type"] as? String == "audio" },
                      "B10: silent source must produce silent output (-an)")
+    }
+
+    /// M3 fast tier: hardware HEVC via VideoToolbox must produce the same media
+    /// properties as software HEVC (hvc1 tag, silent output for silent source).
+    func testHEVCVTPresetTagsHvc1() throws {
+        let tools = try requireTools()
+        let job = ConversionJob(source: Self.silentClip, preset: .mp4HEVCVT, tools: tools)
+        let output = try job.run()
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        let streams = try streamJSON(output, tools)
+        let video = streams.first { $0["codec_type"] as? String == "video" }!
+        XCTAssertEqual(video["codec_name"] as? String, "hevc")
+        XCTAssertEqual(video["codec_tag_string"] as? String, "hvc1")
+        XCTAssertNil(streams.first { $0["codec_type"] as? String == "audio" })
     }
 
     func testPCMAudioTranscodesAACStreamCopies_B6() throws {

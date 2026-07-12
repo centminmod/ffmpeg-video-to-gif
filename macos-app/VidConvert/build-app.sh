@@ -16,16 +16,28 @@ done
 
 swift build -c release
 
+# App icon: regenerate only when the generator changed (make-style staleness check).
+# The .icns lives in disposable build/ (gitignored), never in the repo.
+ICNS=build/AppIcon.icns
+if [ ! -f "$ICNS" ] || [ Tools/make-icon.swift -nt "$ICNS" ]; then
+  ICONSET=build/AppIcon.iconset
+  rm -rf "$ICONSET"
+  swift Tools/make-icon.swift "$ICONSET"
+  iconutil -c icns "$ICONSET" -o "$ICNS"
+  rm -rf "$ICONSET"
+fi
+
 APP=build/VidConvert.app
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources"
 cp .build/release/VidConvert "$APP/Contents/MacOS/VidConvert"
 cp Info.plist "$APP/Contents/Info.plist"
+cp "$ICNS" "$APP/Contents/Resources/AppIcon.icns"
 cp ../Vendor/ffmpeg ../Vendor/ffprobe ../Vendor/gifsicle "$APP/Contents/Helpers/"
 
 # M2 Finder Quick Actions, built without an Xcode project: a non-UI Action Extension
 # is a plain executable whose entry point is Foundation's NSExtensionMain. ONE binary,
-# FIVE appexes — each Info.plist stamped with its preset so Finder shows one menu
+# NINE appexes — each Info.plist stamped with its preset so Finder shows one menu
 # entry per format (mirroring the old Automator workflows).
 # No -application-extension flag: the handler needs NSWorkspace for the app handoff.
 EXT_BIN=build/VidConvertAction
@@ -42,8 +54,11 @@ PRESET_ACTIONS=(
   "VidConvert: H.264 ½|mp4-h264-half|h264-half"
   "VidConvert: H.265|mp4-h265|h265"
   "VidConvert: H.265 ½|mp4-h265-half|h265-half"
+  "VidConvert: H.264 ⚡|mp4-h264-vt|h264-vt"
+  "VidConvert: H.265 ⚡|mp4-h265-vt|h265-vt"
   "VidConvert: GIF ⅓|gif-small|gif"
   "VidConvert: GIF full|gif-full|gif-full"
+  "VidConvert: AV1|mp4-av1|av1"
 )
 for entry in "${PRESET_ACTIONS[@]}"; do
   IFS='|' read -r NAME PRESET SUFFIX <<< "$entry"

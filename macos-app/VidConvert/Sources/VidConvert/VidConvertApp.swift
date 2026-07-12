@@ -6,19 +6,30 @@ import ConverterEngine
 @main
 struct VidConvertApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @AppStorage(UIScale.key) private var uiScale = UIScale.defaultValue
 
     var body: some Scene {
         Window("VidConvert", id: "main") {
             ContentView()
                 .environmentObject(QueueModel.shared)
-                .frame(minWidth: 520, minHeight: 440)
+                .environmentObject(PresetStore.shared)
+                .frame(minWidth: 520 * uiScale, minHeight: 440 * uiScale)
         }
         .windowResizability(.contentMinSize)
+
+        Settings {
+            SettingsView()
+                .environmentObject(PresetStore.shared)
+        }
     }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Notifier.requestAuthorization()
+    }
+
     /// Intake for the Finder Quick Actions (M2) and any other LaunchServices open.
     /// vidconvert://convert?preset=<id>&file=<path>… queues with the preset the user
     /// picked in the Finder menu; plain file URLs (Dock drop, "Open With") queue with

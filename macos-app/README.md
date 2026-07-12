@@ -9,7 +9,16 @@ engine = bundled ffmpeg (Option B), UI = SwiftUI (Plan A), Phase 1 = personal us
 (arm64-only, sandbox off, ad-hoc signing).
 
 **Status:** M0a spikes ✅ · M0b engine ✅ · M1 app ✅ · M2 Finder Quick Action ✅
-(user-verified) · next: M3 nice-to-haves. The app is installed at
+(user-verified) · M3 feature-complete — landed: before/after sizes + metadata
+popovers on finished rows, AV1 preset, VideoToolbox hardware fast tier (H.264 ⚡ /
+H.265 ⚡, `-q:v` constant quality — NINE appexes now), folder-drop recursion,
+completion notifications (posted only while the app is in the background), a
+Settings window (⌘,) with a text-size scale (100–200%) for high-DPI displays,
+a custom preset editor (Settings ▸ Presets: edit quality/conversion parameters
+of built-ins with per-preset Revert to Default, plus user-created presets —
+edits also apply to the Finder Quick Actions), a trim bar (start/end applied to
+newly queued window drops; Quick Actions stay full-length), and a build-time
+generated app icon. The app is installed at
 `/Applications/VidConvert.app` — after source changes run `./VidConvert/build-app.sh
 --install` to rebuild + reinstall + re-register (plain `./VidConvert/build-app.sh`
 just builds into `VidConvert/build/`).
