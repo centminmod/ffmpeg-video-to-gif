@@ -1,8 +1,0 @@
-.build/
-.swiftpm/
-SandboxSpike.app/
-xcuserdata/
-DerivedData/
-Vendor/*
-!Vendor/MANIFEST.md
-build/

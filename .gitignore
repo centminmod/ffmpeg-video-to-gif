@@ -7,6 +7,10 @@ CLAUDE.md
 CLAUDE-history-template.md
 skills-lock.json
 
+# Moved to private repo github.com/centminmod/vidconvert (2026-07-12);
+# leftover untracked build products may remain on disk
+macos-app/
+
 # Never commit (session/scratch)
 tmp/
 screenshots/
