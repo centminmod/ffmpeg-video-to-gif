@@ -177,11 +177,13 @@ private struct CustomPresetDetail: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Form {
+            // Leading VStack, not Form — same left-alignment rationale as ParameterForm.
+            VStack(alignment: .leading, spacing: 12) {
                 HelpRow("Shown on the preset's chip in the main window; also used, "
                         + "lowercased-and-dashed, as the output filename suffix — "
                         + "“My GIF” saves clip-my-gif.gif next to the original.") {
                     TextField("Name:", text: $custom.name)
+                        .frame(maxWidth: 320)
                 }
                 HelpRow("Output format and encoder: H.264 (ffmpeg libx264) plays "
                         + "everywhere; H.265 (libx265) is ~30% smaller; AV1 "
@@ -193,6 +195,7 @@ private struct CustomPresetDetail: View {
                             Text(format.label).tag(format)
                         }
                     }
+                    .fixedSize()
                 }
             }
             ParameterForm(format: custom.format, parameters: $custom.parameters)
@@ -258,12 +261,16 @@ private struct ParameterForm: View {
     }
 
     var body: some View {
-        Form {
+        // A leading-aligned VStack, not a Form: Form's trailing-aligned label
+        // column centers the control block and staggers the left edges (user
+        // request: settings variables left-aligned with their help notes).
+        VStack(alignment: .leading, spacing: 12) {
             if format != .gif {
                 HelpRow(qualityCaption) {
                     Stepper(value: $parameters.quality, in: format.qualityRange) {
                         Text("\(format.qualityLabel): \(parameters.quality)")
                     }
+                    .fixedSize()
                 }
             }
             if format.usesSpeedPreset {
@@ -273,6 +280,7 @@ private struct ParameterForm: View {
                     Picker("Encoder speed:", selection: $parameters.speedPreset) {
                         ForEach(PresetParameters.speedPresets, id: \.self) { Text($0) }
                     }
+                    .fixedSize()
                 }
             }
             HelpRow("Output resolution (ffmpeg scale filter): Original keeps the "
@@ -286,13 +294,14 @@ private struct ParameterForm: View {
                     Text("Fit width").tag(ScaleMode.fitWidth)
                     Text("Fit height").tag(ScaleMode.fitHeight)
                 }
+                .fixedSize()
             }
             if parameters.scaleMode == .fitWidth || parameters.scaleMode == .fitHeight {
                 HelpRow("Pixel target for the fixed axis; the other axis follows "
                         + "the source aspect ratio automatically.") {
                     TextField(parameters.scaleMode == .fitWidth ? "Width (px):" : "Height (px):",
                               value: $parameters.scaleValue, format: .number)
-                        .frame(maxWidth: 160)
+                        .frame(width: 160)
                 }
             }
             fpsControls
@@ -309,6 +318,7 @@ private struct ParameterForm: View {
                 Stepper(value: gifFPS, in: 1...60) {
                     Text("Frame rate: \(gifFPS.wrappedValue) fps")
                 }
+                .fixedSize()
             }
         } else {
             HelpRow("When on, caps the output frame rate (ffmpeg -r), dropping "
@@ -322,6 +332,7 @@ private struct ParameterForm: View {
                     Stepper(value: mp4FPS, in: 1...60) {
                         Text("Frame rate: \(mp4FPS.wrappedValue) fps")
                     }
+                    .fixedSize()
                 }
             }
         }
@@ -338,6 +349,7 @@ private struct ParameterForm: View {
                 Text("floyd_steinberg").tag("floyd_steinberg")
                 Text("none").tag("none")
             }
+            .fixedSize()
         }
         HelpRow("Lossy recompression (gifsicle --lossy): allows small visual "
                 + "artifacts to cut GIF size significantly. Off = pixel-exact; "
@@ -348,6 +360,7 @@ private struct ParameterForm: View {
                 Text("Default").tag(LossyMode.defaultLevel)
                 Text("Custom level").tag(LossyMode.level)
             }
+            .fixedSize()
         }
         if parameters.lossyMode == .level {
             HelpRow("gifsicle --lossy=N (1–200): higher = smaller file, more "
@@ -355,6 +368,7 @@ private struct ParameterForm: View {
                 Stepper(value: $parameters.lossyLevel, in: 1...200) {
                     Text("Lossy level: \(parameters.lossyLevel)")
                 }
+                .fixedSize()
             }
         }
         HelpRow("Runs gifsicle -O3 after rendering — lossless re-optimization of "

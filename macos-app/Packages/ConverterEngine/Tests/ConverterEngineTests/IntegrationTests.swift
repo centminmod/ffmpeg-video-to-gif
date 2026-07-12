@@ -211,6 +211,22 @@ final class IntegrationTests: XCTestCase {
         XCTAssertGreaterThan(info.durationSeconds ?? 0, 1.0, "unoptimized GIF must be intact")
     }
 
+    /// Panel finding: a gifsicle LAUNCH error (missing binary — ProcessRunner throws
+    /// a plain Error, not a JobFailure) must get the same keep-the-GIF treatment as
+    /// a nonzero exit; it used to bypass the catch and fail the whole job.
+    func testGifsicleLaunchFailureKeepsRenderedGif() throws {
+        let tools = try requireTools()
+        let brokenTools = Tools(ffmpeg: tools.ffmpeg, ffprobe: tools.ffprobe,
+                                gifsicle: URL(fileURLWithPath: "/nonexistent/gifsicle"))
+        let job = ConversionJob(source: Self.silentClip, preset: .gifSmall, tools: brokenTools)
+        let output = try job.run()
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: output.path))
+        let info = try probe(output, tools)
+        XCTAssertGreaterThan(info.durationSeconds ?? 0, 1.0, "unoptimized GIF must be intact")
+    }
+
     func testFailureCapturesStderrTail_B8() throws {
         let tools = try requireTools()
         let garbage = Self.fixtures.appendingPathComponent("not-a-video.mov")

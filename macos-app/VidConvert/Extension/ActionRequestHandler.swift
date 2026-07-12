@@ -22,10 +22,38 @@ import UniformTypeIdentifiers
 
 final class ActionRequestHandler: NSObject, NSExtensionRequestHandling {
 
+    /// completeRequest must run exactly once — the normal path and the watchdog
+    /// below race for it (panel finding: without a bound, a stalled provider or a
+    /// lost NSWorkspace.open callback left the request pending until macOS killed
+    /// the extension with no Finder feedback).
+    private let finishLock = NSLock()
+    private var finished = false
+
+    /// True exactly once; every completion path goes through this gate.
+    private func claimFinish() -> Bool {
+        finishLock.lock(); defer { finishLock.unlock() }
+        if finished { return false }
+        finished = true
+        return true
+    }
+
+    private var isFinished: Bool {
+        finishLock.lock(); defer { finishLock.unlock() }
+        return finished
+    }
+
     func beginRequest(with context: NSExtensionContext) {
         let providers = context.inputItems
             .compactMap { $0 as? NSExtensionItem }
             .flatMap { $0.attachments ?? [] }
+
+        // Watchdog: extensions get ~30s total; give providers + the app handoff
+        // 15s, then return the request as-is rather than hang.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+            guard let self, self.claimFinish() else { return }
+            NSLog("VidConvertAction: timed out waiting for file providers / app handoff")
+            context.completeRequest(returningItems: context.inputItems)
+        }
 
         let lock = NSLock()
         var urls: [URL] = []
@@ -44,8 +72,12 @@ final class ActionRequestHandler: NSObject, NSExtensionRequestHandling {
             }
         }
 
-        group.notify(queue: .main) {
-            let finish = { context.completeRequest(returningItems: context.inputItems) }
+        group.notify(queue: .main) { [weak self] in
+            guard let self, !self.isFinished else { return } // watchdog already returned it
+            let finish = { [weak self] in
+                guard let self, self.claimFinish() else { return }
+                context.completeRequest(returningItems: context.inputItems)
+            }
             let sorted = urls.sorted { $0.path < $1.path }
             guard !sorted.isEmpty else {
                 NSLog("VidConvertAction: no in-place file URLs in selection")

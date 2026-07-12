@@ -126,11 +126,23 @@ public final class ConversionJob: @unchecked Sendable {
                                 arguments: FFmpegCommandBuilder.gifsicleCommand(target: temp, options: options),
                                 effectiveDuration: nil,
                                 progressRange: 0.9...1.0, onProgress: onProgress)
-                } catch let failure as JobFailure where !failure.wasCancelled {
-                    // Canonical spec (vid2gif_func.sh): a gifsicle optimization failure
-                    // is a warning — the rendered GIF is kept, unoptimized.
+                } catch let failure as JobFailure where failure.wasCancelled {
+                    throw failure
+                } catch {
+                    // Canonical spec (vid2gif_func.sh:277): ANY gifsicle failure —
+                    // nonzero exit AND launch errors (missing/non-executable binary,
+                    // which ProcessRunner throws as a plain Error, not a JobFailure)
+                    // — is a warning; the rendered GIF is kept, unoptimized.
                 }
             }
+        }
+
+        // A cancel accepted at ANY point before publication must win: without this
+        // re-check, a cancel landing in the window between the last step clearing
+        // currentRunner and the rename below would still publish the file and
+        // report success (panel finding).
+        if isCancelled {
+            throw JobFailure(step: "publish", exitCode: nil, stderrTail: "", wasCancelled: true)
         }
 
         // Atomic publish. destination() re-checks collisions, but check-then-move is

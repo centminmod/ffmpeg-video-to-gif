@@ -11,6 +11,14 @@
 
 import Foundation
 
+/// libproc's child-pid enumeration (no Swift overlay exists — the symbol lives in
+/// libSystem). Returns the number of BYTES written into `buffer`, proc_listpids
+/// semantics.
+@_silgen_name("proc_listchildpids")
+private func proc_listchildpids(_ ppid: pid_t,
+                                _ buffer: UnsafeMutableRawPointer?,
+                                _ buffersize: CInt) -> CInt
+
 public struct ProcessResult: Sendable {
     public var exitCode: Int32
     public var stdoutData: Data?    // only when captureStdout was requested
@@ -109,19 +117,38 @@ public final class ProcessRunner: @unchecked Sendable {
 
     /// SIGTERM now; SIGKILL if still alive after `killDelay` (PRD §5.3 cancel spec).
     /// Before launch, marks the runner so `run()` refuses to start the process.
+    /// PRD §5.3 says process TREE: children are enumerated (via libproc) and
+    /// signalled alongside the direct child — enumerated BEFORE the parent is
+    /// terminated, because once the parent exits its children reparent to launchd
+    /// and can no longer be found this way. (Our tools spawn at most one level.)
     public func cancel(killDelay: TimeInterval = 5) {
         lock.lock()
         cancelled = true
         let running = started && process.isRunning
         lock.unlock()
         guard running else { return } // not launched yet: run() sees `cancelled` and refuses
-        process.terminate() // SIGTERM
         let pid = process.processIdentifier
+        let children = Self.childPIDs(of: pid)
+        process.terminate() // SIGTERM
+        for child in children { kill(child, SIGTERM) }
         DispatchQueue.global().asyncAfter(deadline: .now() + killDelay) { [weak process] in
             if let process, process.isRunning {
+                // Re-enumerate: the guard proves the parent is STILL our child
+                // (no PID reuse), so its current children are still its own.
+                for child in Self.childPIDs(of: pid) { kill(child, SIGKILL) }
                 kill(pid, SIGKILL)
             }
         }
+    }
+
+    private static func childPIDs(of pid: pid_t) -> [pid_t] {
+        // Fixed generous buffer: ffmpeg/ffprobe/gifsicle spawn 0–2 helpers at most.
+        var pids = [pid_t](repeating: 0, count: 64)
+        let bytes = pids.withUnsafeMutableBytes {
+            proc_listchildpids(pid, $0.baseAddress, CInt($0.count))
+        }
+        guard bytes > 0 else { return [] }
+        return pids.prefix(Int(bytes) / MemoryLayout<pid_t>.size).filter { $0 > 0 }
     }
 }
 
