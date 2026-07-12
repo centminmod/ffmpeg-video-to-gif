@@ -3,6 +3,9 @@ exports/
 history/
 CLAUDE-history.md
 PRD-macos-converter-app.md
+CLAUDE.md
+CLAUDE-history-template.md
+skills-lock.json
 
 # Never commit (session/scratch)
 tmp/
