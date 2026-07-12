@@ -1,0 +1,12 @@
+# Private / local-only — repo is PUBLIC on GitHub
+exports/
+history/
+CLAUDE-history.md
+PRD-macos-converter-app.md
+
+# Never commit (session/scratch)
+tmp/
+screenshots/
+.claude/
+.agents/.DS_Store
+.DS_Store
